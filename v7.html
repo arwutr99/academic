@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรายงานผลการเรียน ชั้น ป.1 - ป.3 (หลักสูตร ๒๕๖๘)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: TH Sarabun PSK & Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf.js CDN for PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#1d4ed8',
+                            600: '#1e40af',
+                            700: '#1e3a8a',
+                            800: '#172554',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                        sarabun: ['TH Sarabun New', 'Sarabun', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .report-card-font {
+            font-family: 'TH Sarabun New', 'Sarabun', sans-serif;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-area, #printable-area *, #grad-printable-area, #grad-printable-area * {
+                visibility: visible;
+            }
+            #printable-area, #grad-printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 10px;
+                background: white !important;
+                color: black !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .report-table th, .report-table td {
+            border: 1px solid #1e293b;
+            padding: 4px 6px;
+            font-size: 16px;
+            line-height: 1.25;
+        }
+        .report-table th {
+            background-color: #f1f5f9;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .toast-enter {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        .toast-enter-active {
+            transform: translateX(0);
+            opacity: 1;
+            transition: all 300ms ease-out;
+        }
+        .toast-exit {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        .toast-exit-active {
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 300ms ease-in;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-md no-print">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/10 p-2.5 rounded-xl border border-white/20">
+                    <i class="fa-solid fa-graduation-cap text-2xl text-yellow-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight">ระบบรายงานผลการเรียน ชั้นประถมศึกษาปีที่ ๑ - ๓</h1>
+                    <p class="text-xs text-blue-200">ตามหลักสูตรการศึกษาประถมศึกษาตอนต้น พุทธศักราช ๒๕๖๘ (สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน)</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-white/10 p-1.5 rounded-lg border border-white/10 text-sm flex-wrap sm:flex-nowrap">
+                <span class="text-xs font-light text-slate-200 pl-2">ระดับชั้น:</span>
+                <select id="gradeSelect" onchange="changeGrade()" class="bg-slate-800 text-yellow-300 font-semibold px-3 py-1 rounded border border-slate-600 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                    <option value="P1">ประถมศึกษาปีที่ ๑ (ป.๑)</option>
+                    <option value="P2">ประถมศึกษาปีที่ ๒ (ป.๒)</option>
+                    <option value="P3">ประถมศึกษาปีที่ ๓ (ป.๓)</option>
+                </select>
+
+                <div id="syncStatusBadge" onclick="openSheetsConfigModal()" class="cursor-pointer bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs px-2.5 py-1 rounded-md flex items-center gap-1.5 transition hover:bg-emerald-500/30" title="คลิกเพื่อตั้งค่าการเชื่อมต่อ Google Sheets">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span id="syncStatusText" class="font-medium text-xs">เชื่อม Sheets แล้ว</span>
+                </div>
+
+                <button onclick="syncDataFromSheets()" class="ml-1 bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-2.5 py-1 rounded text-xs transition flex items-center gap-1" title="ดึงข้อมูลล่าสุดจาก Google Sheets">
+                    <i class="fa-solid fa-arrows-rotate" id="syncIcon"></i> ซิงค์ Sheets
+                </button>
+                <button onclick="openSheetsConfigModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-2.5 py-1 rounded text-xs transition flex items-center gap-1" title="ตั้งค่า Web App URL">
+                    <i class="fa-solid fa-file-excel"></i> ตั้งค่า URL
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <nav class="bg-white border-b border-slate-200 shadow-sm no-print sticky top-0 z-20">
+        <div class="max-w-7xl mx-auto px-4 flex overflow-x-auto space-x-1 sm:space-x-4">
+            <button id="tab-btn-students" onclick="switchTab('students')" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-brand-600 text-brand-600 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-users"></i> ๑. รายชื่อนักเรียน (<span id="studentCountBadge">0</span>)
+            </button>
+            <button id="tab-btn-scores" onclick="switchTab('scores')" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-pen-to-square"></i> ๒. บันทึกผลการประเมิน
+            </button>
+            <button id="tab-btn-reports" onclick="switchTab('reports')" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-file-invoice"></i> ๓. แบบรายงานผลการเรียน (PDF)
+            </button>
+            <button id="tab-btn-grad" onclick="switchTab('grad')" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-award"></i> ๔. สรุปจบช่วงชั้น (จบ ป.๓)
+            </button>
+            <button id="tab-btn-settings" onclick="switchTab('settings')" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-sliders"></i> ๕. ตั้งค่าข้อมูลพื้นฐาน
+            </button>
+            <button id="tab-btn-guide" onclick="switchTab('guide')" class="tab-btn py-3 px-4 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-book-bookmark"></i> เกณฑ์หลักสูตร ๒๕๖๘
+            </button>
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+
+        <!-- TAB 1: Student Management -->
+        <section id="tab-students" class="tab-content space-y-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-user-graduate text-brand-600"></i>
+                        จัดการข้อมูลนักเรียน <span id="currentGradeLabel" class="text-brand-600 font-semibold"></span>
+                    </h2>
+                    <p class="text-xs text-slate-500">เพิ่ม ลบ หรือแก้ไขข้อมูลนักเรียนประจำชั้นเพื่อบันทึกผลการประเมิน</p>
+                </div>
+                <!-- ปุ่มเพิ่มนักเรียน และ นำเข้าชั้นเรียน -->
+                <div class="flex items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
+                    <button onclick="openBulkImportModal()" class="w-full sm:w-auto bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-import"></i> นำเข้าทั้งชั้นเรียน
+                    </button>
+                    <button onclick="openAddStudentModal()" class="w-full sm:w-auto bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i> เพิ่ม 1 คน
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-slate-700 border-b border-slate-200 font-semibold uppercase text-xs">
+                            <tr>
+                                <th class="px-4 py-3 text-center w-12">เลขที่</th>
+                                <th class="px-4 py-3">เลขประจำตัว</th>
+                                <th class="px-4 py-3">ชื่อ - สกุล</th>
+                                <th class="px-4 py-3 text-center">เข้าเรียน (%)</th>
+                                <th class="px-4 py-3 text-center">สถานะการประเมิน</th>
+                                <th class="px-4 py-3 text-center w-36">การจัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody" class="divide-y divide-slate-100">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: Scores Management -->
+        <section id="tab-scores" class="tab-content space-y-6 hidden">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <div class="w-full md:w-64">
+                        <label class="block text-xs text-slate-500 mb-1">เลือกนักเรียน:</label>
+                        <select id="scoreStudentSelect" onchange="loadStudentScoreForm()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-brand-500">
+                        </select>
+                    </div>
+                    <div class="w-full md:w-48">
+                        <label class="block text-xs text-slate-500 mb-1">โหมดการแสดงผล:</label>
+                        <select id="entryModeSelect" onchange="toggleEntryMode()" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm">
+                            <option value="individual">ประเมินรายบุคคล</option>
+                            <option value="batch">ประเมินตารางรวม (ทั้งห้อง)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="autoFillDefaultScores()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-2 rounded-lg text-xs font-medium border border-indigo-200 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> เติมค่าเริ่มต้นอัตโนมัติ
+                    </button>
+                    <button onclick="saveCurrentScores()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+            </div>
+
+            <!-- INDIVIDUAL ENTRY FORM -->
+            <div id="individualEntryView" class="space-y-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-6">
+                    <div class="border-b border-slate-200 pb-3 flex justify-between items-center flex-wrap gap-2">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-brand-600"></i>
+                            ประเมินความสามารถเมื่อจบชั้นปี (๘ ความสามารถ)
+                        </h3>
+                        <span class="text-xs bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full font-medium border border-brand-200">
+                            ระดับคุณภาพ ๔ ระดับ: ๑=เริ่มต้น | ๒=พัฒนา | ๓=ชำนาญ | ๔=เชี่ยวชาญ
+                        </span>
+                    </div>
+
+                    <div id="competencyFormContainer" class="space-y-5">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+                        <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-hands-holding-child text-amber-500"></i>
+                            กิจกรรมพัฒนาผู้เรียน (แนะแนว / ลูกเสือ / สังคม)
+                        </h4>
+                        <div class="flex items-center gap-6 pt-2">
+                            <label class="flex items-center gap-2 cursor-pointer text-sm">
+                                <input type="radio" name="activityStatus" value="PASS" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500">
+                                <span class="font-medium text-emerald-700"><i class="fa-solid fa-circle-check"></i> ผ่าน (Pass)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-sm">
+                                <input type="radio" name="activityStatus" value="FAIL" class="w-4 h-4 text-rose-600 focus:ring-rose-500">
+                                <span class="font-medium text-rose-700"><i class="fa-solid fa-circle-xmark"></i> ไม่ผ่าน (Fail)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+                        <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-heart text-rose-500"></i>
+                            คุณลักษณะอันพึงประสงค์ (๕ ข้อประเมิน)
+                        </h4>
+                        <div class="flex items-center gap-6 pt-2">
+                            <label class="flex items-center gap-2 cursor-pointer text-sm">
+                                <input type="radio" name="charStatus" value="PASS" class="w-4 h-4 text-emerald-600 focus:ring-emerald-500">
+                                <span class="font-medium text-emerald-700"><i class="fa-solid fa-circle-check"></i> ผ่าน (Pass)</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-sm">
+                                <input type="radio" name="charStatus" value="FAIL" class="w-4 h-4 text-rose-600 focus:ring-rose-500">
+                                <span class="font-medium text-rose-700"><i class="fa-solid fa-circle-xmark"></i> ไม่ผ่าน (Fail)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BATCH ENTRY TABLE -->
+            <div id="batchEntryView" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-slate-700 border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-center font-bold">
+                                <th class="border p-2 min-w-[50px]">เลขที่</th>
+                                <th class="border p-2 min-w-[160px] text-left">ชื่อ-สกุล</th>
+                                <th class="border p-2 min-w-[70px]">ด้านที่ ๑</th>
+                                <th class="border p-2 min-w-[70px]">ด้านที่ ๒</th>
+                                <th class="border p-2 min-w-[70px]">ด้านที่ ๓</th>
+                                <th class="border p-2 min-w-[70px]">ด้านที่ ๔</th>
+                                <th class="border p-2 min-w-[70px]">ด้านที่ ๕</th>
+                                <th class="border p-2 min-w-[70px]">ด้านที่ ๖</th>
+                                <th class="border p-2 min-w-[70px]">ด้านที่ ๗</th>
+                                <th class="border p-2 min-w-[70px]">ด้านที่ ๘</th>
+                                <th class="border p-2 min-w-[80px]">กิจกรรม</th>
+                                <th class="border p-2 min-w-[80px]">คุณลักษณะ</th>
+                                <th class="border p-2 min-w-[70px]">เข้าเรียน %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batchTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: Reports -->
+        <section id="tab-reports" class="tab-content space-y-6 hidden">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 no-print">
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <label class="text-sm font-medium text-slate-700 whitespace-nowrap">เลือกนักเรียนแสดงผล:</label>
+                    <select id="reportStudentSelect" onchange="renderReportCard()" class="bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-brand-500 w-full md:w-64">
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                    <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                        <i class="fa-solid fa-print"></i> พิมพ์เอกสาร
+                    </button>
+                    <button onclick="downloadPDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> ดาวน์โหลด PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-center bg-slate-200/60 p-2 sm:p-6 rounded-xl">
+                <div id="printable-area" class="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[210mm] min-h-[297mm] p-[12mm] report-card-font space-y-3 rounded-sm leading-snug">
+                    
+                    <div class="text-center space-y-0.5 border-b border-slate-300 pb-2">
+                        <h2 class="text-xl font-bold tracking-wide">แบบการรายงานผลการเรียน<span id="rptGradeTitle">ชั้นประถมศึกษาปีที่ ๑</span></h2>
+                        <p class="text-base">ตามหลักสูตรการศึกษาประถมศึกษาตอนต้น (ชั้นประถมศึกษาปีที่ ๑ - ๓) พุทธศักราช ๒๕๖๘</p>
+                        <p class="text-sm font-semibold"><span id="rptSchoolName">โรงเรียนวัดสาธิตศึกษา</span> &nbsp;&nbsp;<span id="rptAreaOffice">สำนักงานเขตพื้นที่การศึกษาประถมศึกษา</span></p>
+                    </div>
+
+                    <div class="flex justify-between items-center text-base font-medium pt-1 px-1">
+                        <div>
+                            ชื่อ - สกุล: <span id="rptStudentName" class="font-bold border-b border-dotted border-slate-800 px-3">เด็กชายสนใจ การเรียน</span>
+                        </div>
+                        <div>
+                            การเข้าชั้นเรียน: <span id="rptAttendance" class="font-bold border-b border-dotted border-slate-800 px-2">๑๐๐%</span>
+                        </div>
+                    </div>
+
+                    <table class="w-full border-collapse report-table text-base">
+                        <thead>
+                            <tr class="bg-slate-100">
+                                <th class="w-[50%] py-1 text-center">ความสามารถชั้นปี</th>
+                                <th class="w-[15%] text-center">ระดับความสามารถ<br>ที่คาดหวัง</th>
+                                <th class="w-[15%] text-center">ระดับความสามารถ<br>ที่ได้</th>
+                                <th class="w-[20%] text-center">พัฒนาการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rptCompetencyRows">
+                        </tbody>
+                    </table>
+
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <div class="border border-slate-800 p-2 rounded-sm flex items-center justify-between text-base">
+                            <span class="font-semibold">กิจกรรมพัฒนาผู้เรียน:</span>
+                            <div class="flex items-center gap-4">
+                                <span><span id="chkActPass">☑</span> ผ่าน</span>
+                                <span><span id="chkActFail">☐</span> ไม่ผ่าน</span>
+                            </div>
+                        </div>
+                        <div class="border border-slate-800 p-2 rounded-sm flex items-center justify-between text-base">
+                            <span class="font-semibold">คุณลักษณะอันพึงประสงค์:</span>
+                            <div class="flex items-center gap-4">
+                                <span><span id="chkCharPass">☑</span> ผ่าน</span>
+                                <span><span id="chkCharFail">☐</span> ไม่ผ่าน</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-1">
+                        <h3 class="font-bold text-base mb-1">คำอธิบายพฤติกรรม</h3>
+                        <table class="w-full border-collapse report-table text-base">
+                            <thead>
+                                <tr class="bg-slate-100">
+                                    <th class="w-[15%] text-center">ความสามารถข้อที่</th>
+                                    <th class="w-[20%] text-center">ระดับความสามารถที่ได้</th>
+                                    <th class="w-[65%] text-center">พฤติกรรมของนักเรียน</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rptBehaviorRows">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pt-6 grid grid-cols-2 text-center text-base space-y-0">
+                        <div class="space-y-5">
+                            <p>ลงชื่อ..........................................................</p>
+                            <p>(<span id="rptTeacherName">นางสาวสมศรี ใจดี</span>)<br>ครูประจำชั้น<span id="rptTeacherGradeLabel">ประถมศึกษาปีที่ ๑</span></p>
+                        </div>
+                        <div class="space-y-5">
+                            <p>ลงชื่อ..........................................................</p>
+                            <p>(<span id="rptDirectorName">นายสมศักดิ์ บริหาร</span>)<br><span id="rptDirectorPosition">ผู้อำนวยการโรงเรียน</span></p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+<!-- TAB 4: Graduation -->
+        <section id="tab-grad" class="tab-content space-y-6 hidden">
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4 no-print">
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <label class="text-sm font-medium text-slate-700 whitespace-nowrap">เลือกนักเรียน (ป.๓):</label>
+                    <select id="gradStudentSelect" onchange="renderGraduationCard()" class="bg-slate-50 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-brand-500 w-full md:w-64">
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                    <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                        <i class="fa-solid fa-print"></i> พิมพ์เอกสาร
+                    </button>
+                    <button onclick="downloadPDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf"></i> ดาวน์โหลด PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-xl text-sm no-print flex items-start gap-3">
+                <i class="fa-solid fa-circle-info text-amber-600 text-lg mt-0.5"></i>
+                <div>
+                    <h4 class="font-bold">แบบรายงานผลการเรียนระดับประถมศึกษาตอนต้น (จบช่วงชั้น/จบชั้น ป.๓)</h4>
+                    <p class="text-xs text-amber-800 mt-0.5">การตัดสินเมื่อจบชั้น ป.๓ จะประเมินสรุปผลใน ๔ ด้านหลัก (การอ่าน, การเขียน, การคิดคำนวณ, และการประยุกต์ใช้ในชีวิตประจำวัน) ตามเกณฑ์หลักสูตร ๒๕๖๘</p>
+                </div>
+            </div>
+
+            <div class="flex justify-center bg-slate-200/60 p-2 sm:p-6 rounded-xl">
+                <div id="grad-printable-area" class="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[210mm] min-h-[297mm] p-[12mm] report-card-font space-y-3 rounded-sm leading-snug">
+                    
+                    <div class="text-center space-y-0.5 border-b border-slate-300 pb-2">
+                        <h2 class="text-xl font-bold tracking-wide">แบบการรายงานผลการเรียนระดับประถมศึกษาตอนต้น</h2>
+                        <p class="text-base">ตามหลักสูตรการศึกษาประถมศึกษาตอนต้น (ชั้นประถมศึกษาปีที่ ๑ - ๓) พุทธศักราช ๒๕๖๘</p>
+                        <p class="text-sm font-semibold"><span id="gradSchoolName">โรงเรียนวัดสาธิตศึกษา</span> &nbsp;&nbsp;<span id="gradAreaOffice">สำนักงานเขตพื้นที่การศึกษาประถมศึกษา</span></p>
+                    </div>
+
+                    <div class="flex justify-between items-center text-base font-medium pt-1 px-1">
+                        <div>
+                            ชื่อ - สกุล: <span id="gradStudentName" class="font-bold border-b border-dotted border-slate-800 px-3">เด็กชายสนใจ การเรียน</span>
+                        </div>
+                        <div>
+                            การเข้าชั้นเรียน: <span id="gradAttendance" class="font-bold border-b border-dotted border-slate-800 px-2">๑๐๐%</span>
+                        </div>
+                    </div>
+
+                    <table class="w-full border-collapse report-table text-base">
+                        <thead>
+                            <tr class="bg-slate-100">
+                                <th class="w-[45%] text-center">ความสามารถ / กิจกรรม</th>
+                                <th class="w-[25%] text-center">ระดับความสามารถที่คาดหวัง</th>
+                                <th class="w-[30%] text-center">ระดับความสามารถที่ได้</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td rowspan="3" class="font-semibold text-center align-middle">ความสามารถพื้นฐานด้านการเรียนรู้</td>
+                                <td class="px-3">๑. การอ่าน</td>
+                                <td id="gradReadingLevel" class="text-center font-bold text-emerald-800">ชำนาญ</td>
+                            </tr>
+                            <tr>
+                                <td class="px-3">๒. การเขียน</td>
+                                <td id="gradWritingLevel" class="text-center font-bold text-indigo-800">ชำนาญ</td>
+                            </tr>
+                            <tr>
+                                <td class="px-3">๓. การคิดคำนวณ</td>
+                                <td id="gradMathLevel" class="text-center font-bold text-purple-800">ชำนาญ</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="font-semibold px-3">ความสามารถในการประยุกต์ใช้ในชีวิตประจำวัน</td>
+                                <td id="gradLifeLevel" class="text-center font-bold text-blue-800">พัฒนา</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="font-semibold px-3">กิจกรรมพัฒนาผู้เรียน</td>
+                                <td class="text-center">
+                                    <span id="gradActPass">☑ ผ่าน</span> &nbsp;&nbsp;&nbsp; <span id="gradActFail">☐ ไม่ผ่าน</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="font-semibold px-3">คุณลักษณะอันพึงประสงค์</td>
+                                <td class="text-center">
+                                    <span id="gradCharPass">☑ ผ่าน</span> &nbsp;&nbsp;&nbsp; <span id="gradCharFail">☐ ไม่ผ่าน</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="pt-2 space-y-2">
+                        <h3 class="font-bold text-base mb-1">คำอธิบายพฤติกรรม</h3>
+                        <table class="w-full border-collapse report-table text-base">
+                            <thead>
+                                <tr class="bg-slate-100">
+                                    <th class="w-[25%] text-center">ความสามารถ</th>
+                                    <th class="w-[20%] text-center">ระดับความสามารถที่ได้</th>
+                                    <th class="w-[55%] text-center">พฤติกรรมของนักเรียน</th>
+                                </tr>
+                            </thead>
+                            <tbody id="gradBehaviorRows">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pt-6 grid grid-cols-2 text-center text-base space-y-0">
+                        <div class="space-y-5">
+                            <p>ลงชื่อ..........................................................</p>
+                            <p>(<span id="gradTeacherName">นายสุดหล่อ ใจดี</span>)<br>ครูประจำชั้นประถมศึกษาปีที่ ๓</p>
+                        </div>
+                        <div class="space-y-5">
+                            <p>ลงชื่อ..........................................................</p>
+                            <p>(<span id="gradDirectorName">นายสมศักดิ์ บริหาร</span>)<br><span id="gradDirectorPosition">ผู้อำนวยการโรงเรียน</span></p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: Basic Settings -->
+        <section id="tab-settings" class="tab-content space-y-6 hidden">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                <div class="border-b border-slate-200 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-brand-600"></i>
+                            ตั้งค่าข้อมูลพื้นฐานสถานศึกษาและบุคลากร
+                        </h2>
+                        <p class="text-xs text-slate-500">กำหนดชื่อโรงเรียน ผู้บริหาร และครูประจำชั้นแต่ละระดับชั้นเพื่อนำไปใช้ในเอกสารรายงานผลการเรียน</p>
+                    </div>
+                    <button onclick="saveSchoolSettings()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-medium shadow-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่า
+                    </button>
+                </div>
+
+                <form id="settingsForm" onsubmit="event.preventDefault(); saveSchoolSettings();" class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4 md:col-span-2">
+                        <h3 class="font-bold text-brand-700 flex items-center gap-2 text-base">
+                            <i class="fa-solid fa-school"></i> ข้อมูลสถานศึกษา
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">๑) ชื่อโรงเรียน</label>
+                                <input type="text" id="cfgSchoolName" class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:ring-2 focus:ring-brand-500" placeholder="เช่น โรงเรียนวัดสาธิตศึกษา">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">สำนักงานเขตพื้นที่การศึกษา</label>
+                                <input type="text" id="cfgAreaOffice" class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:ring-2 focus:ring-brand-500" placeholder="เช่น สำนักงานเขตพื้นที่การศึกษาประถมศึกษา...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                        <h3 class="font-bold text-brand-700 flex items-center gap-2 text-base">
+                            <i class="fa-solid fa-user-tie"></i> ข้อมูลผู้บริหารสถานศึกษา
+                        </h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">๒) ชื่อ - สกุล ผู้บริหาร</label>
+                                <input type="text" id="cfgDirectorName" class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:ring-2 focus:ring-brand-500" placeholder="เช่น นายสมศักดิ์ บริหาร">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">๓) ตำแหน่งผู้บริหาร</label>
+                                <input type="text" id="cfgDirectorPosition" class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:ring-2 focus:ring-brand-500" placeholder="เช่น ผู้อำนวยการโรงเรียน...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                        <h3 class="font-bold text-brand-700 flex items-center gap-2 text-base">
+                            <i class="fa-solid fa-chalkboard-user"></i> ข้อมูลครูประจำชั้น
+                        </h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">๔) ครูประจำชั้นประถมศึกษาปีที่ ๑</label>
+                                <input type="text" id="cfgTeacherP1" class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:ring-2 focus:ring-brand-500" placeholder="เช่น นางสาวสมศรี ใจดี">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">๕) ครูประจำชั้นประถมศึกษาปีที่ ๒</label>
+                                <input type="text" id="cfgTeacherP2" class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:ring-2 focus:ring-brand-500" placeholder="เช่น นางสาวสมนึก ใจร้าย">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">๖) ครูประจำชั้นประถมศึกษาปีที่ ๓</label>
+                                <input type="text" id="cfgTeacherP3" class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:ring-2 focus:ring-brand-500" placeholder="เช่น นายสุดหล่อ ใจดี">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- TAB 6: Curriculum Guide -->
+        <section id="tab-guide" class="tab-content space-y-6 hidden">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <h3 class="text-lg font-bold text-slate-800 border-b pb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-brand-600"></i>
+                    สรุปเกณฑ์การวัดและประเมินผล หลักสูตรประถมศึกษาตอนต้น (ป.๑ - ๓) พ.ศ. ๒๕๖๘
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
+                        <h4 class="font-bold text-brand-700 flex items-center gap-2">
+                            <i class="fa-solid fa-signal"></i> ๔ ระดับความสามารถ (Competency Levels)
+                        </h4>
+                        <ul class="list-disc list-inside space-y-1 text-slate-700">
+                            <li><strong class="text-orange-600">ระดับ ๑ เริ่มต้น:</strong> เข้าใจพื้นฐาน ปปฏิบัติตามคำแนะนำ ต้องได้รับการช่วยเหลือ</li>
+                            <li><strong class="text-blue-600">ระดับ ๒ พัฒนา:</strong> เข้าใจและปฏิบัติได้ในระดับหนึ่ง สื่อสารประโยคง่ายๆ ได้</li>
+                            <li><strong class="text-emerald-600">ระดับ ๓ ชำนาญ:</strong> ปฏิบัติได้ถูกต้อง ชัดเจน เป็นระบบ แก้ปัญหาได้ดี</li>
+                            <li><strong class="text-purple-600">ระดับ ๔ เชี่ยวชาญ:</strong> ปฏิบัติได้อย่างลื่นไหล สร้างสรรค์ ซับซ้อน มีวิจารณญาณ</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
+                        <h4 class="font-bold text-brand-700 flex items-center gap-2">
+                            <i class="fa-solid fa-check-double"></i> เกณฑ์การจบการศึกษาระดับประถมศึกษาตอนต้น (จบ ป.๓)
+                        </h4>
+                        <ul class="list-disc list-inside space-y-1 text-slate-700">
+                            <li>มีความสามารถเมื่อจบ ป.๑ - ป.๓ ครบทั้ง ๘ ความสามารถ</li>
+                            <li><strong>ด้านการอ่าน การเขียน การคิดคำนวณ:</strong> ต้องได้ระดับ <span class="bg-emerald-100 text-emerald-800 font-bold px-1.5 rounded">ชำนาญ ขึ้นไป</span></li>
+                            <li><strong>ด้านการประยุกต์ใช้ในชีวิตประจำวัน:</strong> ต้องได้ระดับ <span class="bg-blue-100 text-blue-800 font-bold px-1.5 rounded">พัฒนา ขึ้นไป</span></li>
+                            <li>กิจกรรมพัฒนาผู้เรียน & คุณลักษณะอันพึงประสงค์: ต้องประเมินผ่าน</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal for Adding / Editing Student -->
+    <div id="studentModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+            <div class="bg-slate-900 text-white px-5 py-4 flex justify-between items-center">
+                <h3 id="modalStudentTitle" class="font-bold text-base">เพิ่มนักเรียนใหม่</h3>
+                <button onclick="closeStudentModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="studentForm" onsubmit="handleSaveStudent(event)" class="p-5 space-y-4 text-sm">
+                <input type="hidden" id="modalStudentId">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">เลขที่</label>
+                    <input type="number" id="modalStudentNo" required min="1" class="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">เลขประจำตัวนักเรียน</label>
+                    <input type="text" id="modalStudentCode" required class="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">คำนำหน้า + ชื่อ - สกุล</label>
+                    <input type="text" id="modalStudentName" required placeholder="เด็กชาย/เด็กหญิง ..." class="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">เวลาเข้าเรียน (%)</label>
+                    <input type="number" id="modalStudentAttendance" required min="0" max="100" value="100" class="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeStudentModal()" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Bulk Import Students -->
+    <div id="bulkImportModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-indigo-900 text-white px-5 py-4 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-file-import"></i>
+                    <h3 class="font-bold text-base">นำเข้ารายชื่อนักเรียนทั้งชั้นเรียน</h3>
+                </div>
+                <button onclick="closeBulkImportModal()" class="text-indigo-200 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-4 text-sm flex-1">
+                <div class="bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-lg p-3 text-xs leading-relaxed">
+                    <strong>วิธีการ:</strong> ให้ Copy ข้อมูลตารางจาก <b>Excel</b> หรือ <b>Google Sheets</b> โดยต้องมีลำดับคอลัมน์ดังนี้ (ไม่เอาหัวตาราง):<br>
+                    <div class="mt-2 flex gap-2 font-mono bg-white p-2 border border-indigo-100 rounded">
+                        <span class="bg-indigo-100 px-1.5 py-0.5 rounded">1. เลขที่</span> ➔ 
+                        <span class="bg-indigo-100 px-1.5 py-0.5 rounded">2. รหัสนักเรียน</span> ➔ 
+                        <span class="bg-indigo-100 px-1.5 py-0.5 rounded">3. ชื่อ-สกุล</span> ➔ 
+                        <span class="bg-indigo-100 px-1.5 py-0.5 rounded">4. เวลาเข้าเรียน (%) *ถ้าไม่มีจะตั้งเป็น 100</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">วางข้อมูลที่นี่ (Paste here) <span class="text-rose-500">*</span></label>
+                    <textarea id="bulkImportText" rows="10" class="w-full border border-slate-300 rounded-lg p-3 text-sm font-mono focus:ring-2 focus:ring-indigo-500 whitespace-pre text-slate-700 bg-slate-50" placeholder="1    12345    เด็กชายทดสอบ ระบบ    100&#10;2    12346    เด็กหญิงเรียนดี เก่งมาก    95"></textarea>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-2 shrink-0">
+                <button type="button" onclick="closeBulkImportModal()" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-100 font-medium">ยกเลิก</button>
+                <button type="button" onclick="processBulkImport(event)" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow flex items-center gap-2">
+                    <i class="fa-solid fa-check"></i> ยืนยันการนำเข้า
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Google Sheets Config -->
+    <div id="sheetsConfigModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            <div class="bg-slate-900 text-white px-5 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-file-excel text-emerald-400"></i>
+                    <h3 class="font-bold text-base">ตั้งค่าการเชื่อมต่อ Google Sheets</h3>
+                </div>
+                <button onclick="closeSheetsConfigModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4 text-sm">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">Google Apps Script Web App URL:</label>
+                    <input type="url" id="webAppUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs font-mono focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeSheetsConfigModal()" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 text-xs">ยกเลิก</button>
+                    <button type="button" onclick="saveSheetsConfig()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-xs flex items-center gap-1">
+                        <i class="fa-solid fa-floppy-disk"></i> บันทึกและซิงค์ข้อมูล
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-[60] flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // URL Web App
+        const DEFAULT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz4xwWOtkf6U7vhwteEFKv425Zx_6_GVjT5yD5d1E_jMvH8DHp12ywACFGMWYcgd5jZ/exec";
+
+        // Curriculum 2568 Standards Definition
+        const COMPETENCY_TITLES = {
+            P1: [
+                "๑. เข้าใจความหมายของคำ ข้อความ ภาพ สัญลักษณ์ที่พบเห็น พร้อมทั้งสรุปสาระสำคัญ เพื่อนำไปใช้ในชีวิตประจำวัน และสื่อสารให้ผู้อื่นเข้าใจด้วยการพูดเป็นประโยคง่าย ๆ อย่างเหมาะสม",
+                "๒. เขียนประโยคง่าย ๆ ที่เกี่ยวข้องกับชีวิตประจำวันและสิ่งรอบตัว โดยใช้คำพื้นฐาน เพื่อถ่ายทอดความคิดและความรู้สึก",
+                "๓. ใช้แนวคิดพื้นฐานทางคณิตศาสตร์เพื่อแก้ปัญหาในชีวิตประจำวันด้วยความเชื่อมั่น และสื่อสารด้วยภาษาและสัญลักษณ์ทางคณิตศาสตร์อย่างสมเหตุสมผล",
+                "๔. เข้าใจแนวคิดพื้นฐานของปรากฏการณ์ทางธรรมชาติ สิ่งแวดล้อม และนำเทคโนโลยีไปใช้ในชีวิตประจำวันด้วยความรับผิดชอบ",
+                "๕. ปฏิบัติตนในฐานะสมาชิกที่ดีของครอบครัวและโรงเรียนด้วยความรับผิดชอบ ทำงานร่วมกับผู้อื่นอย่างมีประสิทธิภาพ และมีส่วนร่วมในกิจกรรมทางวัฒนธรรมและประเพณีของโรงเรียน",
+                "๖. รู้ที่มาของรายรับ รายจ่ายของตนเองในชีวิตประจำวันและใช้จ่ายอย่างพอเพียงมีทัศนคติที่ดีต่อการทำงานและการช่วยเหลือครอบครัว",
+                "๗. ดูแลรักษาสุขภาพกายโดยเลือกรับประทานอาหารและออกกำลังกายอย่างเหมาะสม ควบคุมอารมณ์ของตนเองได้ และรู้จักขอความช่วยเหลือเมื่อเกิดเหตุร้ายกับตนเองหรือผู้อื่น",
+                "๘. ปฏิบัติกิจกรรมทางศิลปะ และวัฒนธรรมท้องถิ่นด้วยความกระตือรือร้น"
+            ],
+            P2: [
+                "๑. เข้าใจความหมายของคำ ข้อความ ภาพ สัญลักษณ์ แผนภูมิ แผนภาพ แผนผัง เรื่องสั้น ๆ พร้อมทั้งสรุปสาระสำคัญ เพื่อนำไปใช้ในชีวิตประจำวัน และสื่อสารให้ผู้อื่นเข้าใจด้วยการพูดและเขียนเป็นประโยคง่าย ๆ อย่างเหมาะสม",
+                "๒. เขียนประโยคที่ซับซ้อนโดยใช้คำพื้นฐานที่หลากหลาย และจัดเรียงเนื้อหาให้สื่อความหมายได้ชัดเจนและถูกต้อง เพื่อถ่ายทอดข้อมูล ความคิด และความรู้สึก",
+                "๓. ประยุกต์ใช้แนวคิดพื้นฐานทางคณิตศาสตร์แก้ปัญหาที่ซับซ้อนด้วยความเชื่อมั่น และสื่อสารด้วยภาษาและสัญลักษณ์ทางคณิตศาสตร์อย่างสมเหตุสมผล",
+                "๔. เข้าใจแนวคิดพื้นฐานของปรากฏการณ์ทางธรรมชาติ สิ่งแวดล้อม รู้จักการใช้เครื่องมือพื้นฐานและประยุกต์ใช้เทคโนโลยีในชีวิตประจำวันตามบริบทและสภาพแวดล้อมด้วยความรับผิดชอบ และคำนึงถึงผลกระทบที่เกิดขึ้น",
+                "๕. ปฏิบัติตนเป็นสมาชิกที่ดีของชุมชน ปฏิบัติตามกฎระเบียบและข้อตกลงร่วมกัน มีส่วนร่วมในกิจกรรมของโรงเรียนและชุมชนด้วยความรับผิดชอบ",
+                "๖. วางแผนการใช้จ่ายเงินของตนเองอย่างคุ้มค่า เข้าใจความสำคัญของการออมเงิน และตระหนักถึงคุณค่าของการทำงาน",
+                "๗. ปฏิบัติตนในการดูแลสุขภาพกายและจิตใจของตนเอง เลือกรับประทานอาหารที่มีประโยชน์ และปฏิบัติตามหลักความปลอดภัยในชีวิตประจำวัน",
+                "๘. สร้างสรรค์งานศิลปะและเข้าร่วมกิจกรรมวัฒนธรรมด้วยความภาคภูมิใจ"
+            ],
+            P3: [
+                "๑. เข้าใจความหมายของคำ ข้อความ ภาพ สัญลักษณ์ แผนภูมิ แผนภาพ แผนผัง เรื่องสั้น พร้อมทั้งสรุปสาระสำคัญ เพื่อนำไปใช้ในชีวิตประจำวัน และสื่อสารให้ผู้อื่นเข้าใจด้วยวิธีการต่าง ๆ อย่างเหมาะสม",
+                "๒. เขียนเล่าเรื่องโดยจัดเรียงเนื้อหาให้สื่อความหมายได้ชัดเจนและถูกต้อง เพื่อถ่ายทอดข้อมูล ความคิด และความรู้สึก เหมาะสมกับสถานการณ์และกาลเทศะ",
+                "๓. ประยุกต์ใช้แนวคิดพื้นฐานทางคณิตศาสตร์แก้ปัญหาที่ไม่คุ้นเคย สถานการณ์ใหม่ด้วยความเชื่อมั่น และสื่อสารด้วยภาษาและสัญลักษณ์ทางคณิตศาสตร์อย่างสมเหตุสมผล",
+                "๔. เข้าใจแนวคิดพื้นฐานของปรากฏการณ์ทางธรรมชาติสิ่งแวดล้อม รู้จักการใช้เครื่องมือพื้นฐานและประยุกต์ใช้เทคโนโลยีในการแก้ปัญหาและสร้างสรรค์สิ่งใหม่ได้อย่างเหมาะสม ตามบริบทและสภาพแวดล้อมด้วยความรับผิดชอบ",
+                "๕. แสดงออกถึงความเป็นพลเมืองดี เข้าใจและเคารพความหลากหลายทางวัฒนธรรมและสังคม และมีส่วนร่วมในการแก้ปัญหาของชุมชน",
+                "๖. วิเคราะห์การใช้จ่ายเงินและวางแผนงบประมาณอย่างเป็นระบบ เข้าใจแนวคิดพื้นฐานด้านเศรษฐกิจและมีวินัยทางการเงิน",
+                "๗. วางแผนและปฏิบัติตนเพื่อส่งเสริมสุขภาพกายและสุขภาพจิต มีทักษะการปฏิเสธและการป้องกันตนเองจากภัยเสี่ยงรอบตัว",
+                "๘. ชื่นชม ประยุกต์ใช้ และร่วมอนุรักษ์ศิลปวัฒนธรรมและภูมิปัญญาท้องถิ่นอย่างสร้างสรรค์"
+            ]
+        };
+
+        // ตารางอ้างอิงคำอธิบายพฤติกรรมนักเรียนตามระดับความสามารถ (อ้างอิงจากไฟล์เอกสาร .docx หลักสูตร ๒๕๖๘)
+        const BEHAVIOR_RUBRICS = {
+            P1: {
+                0: { 1: "เข้าใจคำหรือภาพที่พบเห็นในชีวิตประจำวันได้บ้าง แต่ยังจับใจความสำคัญไม่ได้ชัดเจน และสื่อสารด้วยคำหรือวลีสั้น ๆ ที่ยังไม่ครบถ้วน", 2: "เข้าใจคำ ข้อความ หรือภาพที่พบเห็นได้ในระดับหนึ่ง สรุปสาระสำคัญพอเข้าใจ และพูดเป็นประโยคง่าย ๆ ได้แม้จะยังมีข้อผิดพลาดเล็กน้อย", 3: "เข้าใจคำ ข้อความ และภาพได้ชัดเจน สามารถสรุปสาระสำคัญได้ถูกต้อง และสื่อสารด้วยประโยคง่าย ๆ อย่างเหมาะสม เข้าใจง่าย", 4: "เข้าใจและเชื่อมโยงข้อมูลจากคำ ข้อความ ภาพ และสัญลักษณ์กับสถานการณ์ในชีวิตจริงได้ดีมาก สรุปสาระสำคัญได้กระชับ และสื่อสารอย่างคล่องแคล่ว ชัดเจน เหมาะสมกับผู้ฟังและบริบท" },
+                1: { 1: "เขียนคำหรือประโยคสั้น ๆ ได้บางคำ บางประโยค ยังมีข้อผิดพลาดด้านการสะกดคำและลำดับความคิด ทำให้เข้าใจยาก", 2: "เขียนประโยคง่าย ๆ ได้ 1-2 ประโยค โดยใช้คำพื้นฐานที่เกี่ยวข้องกับชีวิตประจำวัน สามารถถ่ายทอดความคิดหรือความรู้สึกได้พอเข้าใจ แม้จะยังมีข้อผิดพลาดอยู่บ้าง", 3: "เขียนประโยคง่าย ๆ ได้อย่างต่อเนื่อง 3-4 ประโยค โดยใช้คำพื้นฐานที่เหมาะสม ถ่ายทอดความคิดและความรู้สึกได้ชัดเจน เข้าใจง่าย และมีความสัมพันธ์ของเนื้อหา", 4: "เขียนประโยคง่าย ๆ ได้อย่างลื่นไหล 5 ประโยคขึ้นไป โดยมีโครงสร้างสมบูรณ์ ใช้คำได้หลากหลายเหมาะสม ถ่ายทอดความคิดและความรู้สึกอย่างสร้างสรรค์ ชัดเจน และเหมาะกับบริบท" },
+                2: { 1: "แก้ปัญหาทางคณิตศาสตร์ง่าย ๆ ได้บางสถานการณ์ โดยยังต้องการความช่วยเหลือมาก ใช้สัญลักษณ์ไม่ถูกต้องหรือไม่สอดคล้องกับสถานการณ์", 2: "แก้ปัญหาทางคณิตศาสตร์ที่คุ้นเคยได้บ้างด้วยตนเอง มีความพยายามในการใช้สัญลักษณ์ทางคณิตศาสตร์ แต่ยังมีข้อผิดพลาดเล็กน้อย", 3: "แก้ปัญหาทางคณิตศาสตร์ในชีวิตประจำวันได้อย่างมั่นใจ ใช้ภาษาและสัญลักษณ์ทางคณิตศาสตร์ได้อย่างถูกต้องและสมเหตุสมผล", 4: "แก้ปัญหาหลากหลายสถานการณ์ได้อย่างมีประสิทธิภาพ มีความเชื่อมั่นในแนวคิดของตนเองและอธิบายวิธีคิดหรือเหตุผลได้อย่างชัดเจนโดยใช้ภาษาและสัญลักษณ์ทางคณิตศาสตร์ได้อย่างเหมาะสม" },
+                3: { 1: "สังเกตหรือพูดถึงปรากฏการณ์ธรรมชาติหรือสิ่งแวดล้อมได้เพียงบางส่วน ยังไม่เข้าใจเหตุและผล ใช้เทคโนโลยีในชีวิตประจำวันได้จำกัด และยังขาดความรับผิดชอบในการใช้งาน", 2: "อธิบายหรือยกตัวอย่างปรากฏการณ์ธรรมชาติหรือสิ่งแวดล้อมที่ใกล้ตัวได้บ้าง เริ่มเข้าใจผลกระทบ ใช้เทคโนโลยีพื้นฐานได้ และมีพฤติกรรมรับผิดชอบบางส่วน", 3: "เข้าใจแนวคิดพื้นฐานเกี่ยวกับธรรมชาติและสิ่งแวดล้อม อธิบายความสัมพันธ์หรือผลกระทบได้ดี ใช้เทคโนโลยีในชีวิตประจำวันได้เหมาะสม พร้อมแสดงความรับผิดชอบในการใช้งาน", 4: "อธิบายปรากฏการณ์ธรรมชาติหรือปัญหาสิ่งแวดล้อมอย่างเชื่อมโยงและลึกซึ้ง ประยุกต์ใช้เทคโนโลยีในสถานการณ์ต่าง ๆ ได้อย่างมีเหตุผล และแสดงความรับผิดชอบต่อสิ่งแวดล้อมและการใช้เทคโนโลยีอย่างชัดเจน" },
+                4: { 1: "ปฏิบัติตามหน้าที่พื้นฐานในครอบครัวและโรงเรียนได้บางครั้งยังขาดความสม่ำเสมอ ไม่ค่อยแสดงความรับผิดชอบ และมีปัญหาในการทำงานร่วมกับผู้อื่น ไม่ค่อยเข้าร่วมกิจกรรมโรงเรียน", 2: "ปฏิบัติตนในฐานะสมาชิกของครอบครัวและโรงเรียนได้ในสถานการณ์ทั่วไป เริ่มมีความรับผิดชอบ ทำงานกับผู้อื่นได้ในระดับหนึ่ง และเข้าร่วมกิจกรรมโรงเรียนเมื่อได้รับการชักชวนหรือสนับสนุน", 3: "ปฏิบัติตนอย่างสม่ำเสมอในฐานะสมาชิกที่ดีของครอบครัวและโรงเรียน มีความรับผิดชอบต่อตนเองและส่วนรวม ทำงานร่วมกับผู้อื่นได้ดี และเข้าร่วมกิจกรรมวัฒนธรรมและประเพณีของโรงเรียนอย่างตั้งใจ", 4: "แสดงบทบาทเชิงรุกในครอบครัวและโรงเรียน มีความรับผิดชอบสูง ทำงานเป็นทีมได้อย่างมีประสิทธิภาพ พร้อมสนับสนุนผู้อื่น และมีส่วนร่วมในกิจกรรมวัฒนธรรมและประเพณีด้วยความภาคภูมิใจและเป็นแบบอย่างที่ดี" },
+                5: { 1: "รู้ที่มาของรายรับ รายจ่ายของตนเองในชีวิตประจำวัน และใช้จ่ายอย่างพอเพียง มีทัศนคติที่ดีต่อการทำงานและการช่วยเหลือครอบครัว", 2: "ระบุรายรับ รายจ่ายของตนเองได้ในระดับพื้นฐาน เริ่มใช้จ่ายอย่างมีเหตุผล และแสดงความตั้งใจช่วยเหลือครอบครัวบ้างในชีวิตประจำวัน", 3: "ระบุที่มาของรายรับรายจ่ายได้ชัดเจน ใช้จ่ายอย่างพอเพียงตามลำดับความสำคัญ แสดงทัศนคติที่ดีต่อการทำงาน และช่วยเหลือครอบครัวอย่างสม่ำเสมอ", 4: "อธิบายรายรับ รายจ่ายของตนเองได้อย่างเป็นระบบวางแผนการใช้จ่ายอย่างพอเพียงและรอบคอบ มีแนวคิดสร้างสรรค์ในการช่วยเหลือครอบครัว และเห็นคุณค่าของการทำงานอย่างชัดเจน" },
+                6: { 1: "เลือกอาหารหรือออกกำลังกายได้อย่างไม่สม่ำเสมอ ควบคุมอารมณ์ตนเองได้ยากในสถานการณ์ทั่วไป และยังไม่สามารถขอความช่วยเหลือได้อย่างเหมาะสมเมื่อต้องเผชิญเหตุร้าย", 2: "เริ่มเลือกรับประทานอาหารและออกกำลังกายอย่างเหมาะสมในบางสถานการณ์ ควบคุมอารมณ์ตนเองได้ในระดับหนึ่ง และรู้จักขอความช่วยเหลือเมื่อเกิดเหตุร้ายกับตนเองหรือผู้อื่น", 3: "ดูแลรักษาสุขภาพกายโดยเลือกรับประทานอาหารและออกกำลังกายอย่างเหมาะสม ควบคุมอารมณ์ของตนเองได้ดี และรู้จักขอความช่วยเหลือทันทีเมื่อเกิดเหตุร้าย", 4: "ดูแลสุขภาพกายและจิตใจได้อย่างเป็นระบบ สม่ำเสมอ ควบคุมอารมณ์ได้ดีเยี่ยมในทุกสถานการณ์ และเป็นแบบอย่างในการป้องกันเหตุร้ายและช่วยเหลือผู้อื่น" },
+                7: { 1: "ร่วมกิจกรรมทางศิลปะและวัฒนธรรมได้เมื่อได้รับคำสั่ง ยังขาดความสนใจและความกระตือรือร้น", 2: "ปฏิบัติกิจกรรมทางศิลปะและวัฒนธรรมท้องถิ่นได้ตามคำแนะนำ มีความสนใจและตั้งใจในระดับหนึ่ง", 3: "ปฏิบัติกิจกรรมทางศิลปะและวัฒนธรรมท้องถิ่นด้วยความกระตือรือร้น แสดงออกถึงความสนุกสนานและความตั้งใจ", 4: "ปฏิบัติกิจกรรมทางศิลปะและวัฒนธรรมท้องถิ่นด้วยความกระตือรือร้นอย่างสูง ถ่ายทอดผลงานด้วยความสร้างสรรค์และภาคภูมิใจ" }
+            },
+            P2: {
+                0: { 1: "เข้าใจข้อมูลพื้นฐานจากคำหรือภาพบางส่วน แต่ยังไม่สามารถสรุปใจความได้ชัดเจนและสื่อสารด้วยประโยคสั้น ๆ ที่อาจไม่สมบูรณ์หรือไม่ชัดเจน", 2: "เข้าใจความหมายจากข้อความหรือภาพรวมถึงแผนภาพได้ในระดับหนึ่ง สรุปประเด็นสำคัญได้พอเข้าใจ และสามารถพูดหรือเขียนเป็นประโยคง่าย ๆ ได้ แม้จะยังไม่สมบูรณ์", 3: "เข้าใจข้อมูลจากแหล่งต่าง ๆ ได้ดี รวมถึงแผนภูมิและแผนภาพ สามารถสรุปสาระสำคัญได้ชัดเจน และสื่อสารผ่านการพูดและเขียนเป็นประโยคง่าย ๆ ได้เหมาะสมกับบริบท", 4: "วิเคราะห์และเชื่อมโยงข้อมูลจากข้อความ แผนภาพและแผนผังได้อย่างถูกต้อง สรุปเนื้อหาได้กระชับและตรงประเด็น พร้อมสื่อสารผ่านการพูดและเขียนได้คล่องแคล่วชัดเจน และเหมาะสมกับผู้ฟังหรือผู้อ่าน" },
+                1: { 1: "เขียนประโยคได้เพียงประโยคสั้น ๆ ไม่สมบูรณ์ การใช้คำยังจำกัด เนื้อหาขาดความชัดเจนและไม่สื่อความหมายได้ครบถ้วน", 2: "เขียนประโยคที่มีความซับซ้อนในระดับหนึ่ง โดยใช้คำพื้นฐานที่หลากหลายได้บ้าง สื่อสารข้อมูลหรือความคิดได้พอเข้าใจ แต่ยังมีจุดบกพร่องในด้านการเรียงลำดับหรือใช้คำไม่เหมาะสมบางส่วน", 3: "เขียนประโยคซับซ้อนได้ชัดเจน โดยใช้คำพื้นฐานได้หลากหลาย เหมาะสม และจัดเรียงเนื้อหาได้เป็นระบบสามารถถ่ายทอดข้อมูล ความคิด และความรู้สึกได้อย่างถูกต้อง", 4: "เขียนประโยคซับซ้อนหลากหลายรูปแบบ ใช้คำพื้นฐานได้อย่างสร้างสรรค์และเหมาะสม จัดลำดับความคิดได้ดีเยี่ยม ถ่ายทอดข้อมูล ความคิด และความรู้สึกได้อย่างชัดเจน ลุ่มลึก และเหมาะสมกับบริบท" },
+                2: { 1: "แก้ปัญหาคณิตศาสตร์ง่าย ๆ ที่มีหลายขั้นตอนได้บางส่วน โดยยังขาดความเข้าใจ ไม่มั่นใจ และใช้สัญลักษณ์ทางคณิตศาสตร์ได้ไม่ถูกต้องหรือไม่ครบถ้วน", 2: "แก้ปัญหาคณิตศาสตร์ที่ซับซ้อนระดับต้นได้โดยมีขั้นตอนชัดเจนบางส่วน ใช้สัญลักษณ์และภาษาคณิตศาสตร์ได้พอเหมาะ แต่ยังมีข้อผิดพลาดเล็กน้อย", 3: "แก้ปัญหาที่มีหลายขั้นตอนหรือความซับซ้อนได้อย่างมั่นใจ ใช้แนวคิดพื้นฐานอย่างเป็นระบบ สื่อสารด้วยภาษาและสัญลักษณ์ทางคณิตศาสตร์ได้ถูกต้องและสมเหตุสมผล", 4: "แก้ปัญหาที่ซับซ้อนในชีวิตจริงได้อย่างเป็นระบบและสร้างสรรค์ อธิบายวิธีคิดได้ชัดเจน ใช้ภาษาและสัญลักษณ์ทางคณิตศาสตร์อย่างแม่นยำ เหมาะสมกับบริบท และแสดงความเข้าใจเชิงลึก" },
+                3: { 1: "อธิบายปรากฏการณ์ทางธรรมชาติหรือสิ่งแวดล้อมได้เพียงบางส่วน ใช้เครื่องมือหรือเทคโนโลยีพื้นฐานได้โดยยังต้องการความช่วยเหลือ และยังไม่แสดงพฤติกรรมรับผิดชอบหรือคำนึงถึงผลกระทบ", 2: "อธิบายแนวคิดพื้นฐานของธรรมชาติและสิ่งแวดล้อมที่พบในชีวิตประจำวันได้พอเข้าใจ ใช้เครื่องมือพื้นฐานได้เหมาะสม และเริ่มแสดงความรับผิดชอบในการใช้เทคโนโลยี", 3: "อธิบายแนวคิดพื้นฐานเกี่ยวกับธรรมชาติและสิ่งแวดล้อมได้อย่างถูกต้อง ใช้เครื่องมือพื้นฐานและเทคโนโลยีในชีวิตประจำวันได้ตามบริบท แสดงความรับผิดชอบและคำนึงถึงผลกระทบต่อสิ่งแวดล้อม", 4: "อธิบายเชิงลึกเกี่ยวกับธรรมชาติ สิ่งแวดล้อม และผลกระทบที่ตามมาได้อย่างชัดเจน ใช้เครื่องมือและเทคโนโลยีได้อย่างเหมาะสมกับสถานการณ์ต่าง ๆ แสดงพฤติกรรมรับผิดชอบสูง และคิดเชิงระบบต่อผลกระทบที่อาจเกิดขึ้น" },
+                4: { 1: "ปฏิบัติตนในฐานะสมาชิกของโรงเรียนและชุมชนได้เพียงบางครั้ง ยังต้องได้รับการเตือนขาดความสม่ำเสมอในการทำหน้าที่ ไม่ค่อยมีส่วนร่วมในกิจกรรมร่วมกับผู้อื่น", 2: "เริ่มปฏิบัติหน้าที่ของตนเองในโรงเรียนและชุมชนได้ในสถานการณ์ทั่วไป มีความรับผิดชอบในระดับหนึ่ง และสามารถทำงานร่วมกับผู้อื่นได้พอเหมาะ มีส่วนร่วมในกิจกรรมวัฒนธรรมและประเพณีเมื่อได้รับการชักชวน", 3: "ปฏิบัติตนได้อย่างเหมาะสมในฐานะสมาชิกที่ดีของโรงเรียนและชุมชนแสดงความรับผิดชอบในหน้าที่ทำงานร่วมกับผู้อื่นได้อย่างราบรื่น และมีส่วนร่วมในกิจกรรมวัฒนธรรมและประเพณีของชุมชนด้วยความเต็มใจ", 4: "แสดงบทบาทเชิงรุกและเป็นแบบอย่างที่ดีในโรงเรียนและชุมชน มีความรับผิดชอบสูง ทำงานร่วมกับผู้อื่นได้อย่างสร้างสรรค์ สนับสนุนผู้อื่น และมีส่วนร่วมในกิจกรรมวัฒนธรรมและประเพณีของชุมชนด้วยความภาคภูมิใจ" },
+                5: { 1: "ระบุรายรับและรายจ่ายของตนเองหรือครอบครัวได้เพียงบางส่วน ยังไม่สามารถวางแผนการใช้จ่ายได้และไม่เข้าใจอย่างชัดเจนเกี่ยวกับการทำงานหรืออาชีพ", 2: "ระบุรายรับ รายจ่ายของตนเองและครอบครัวได้พอเข้าใจ เริ่มวางแผนใช้จ่ายอย่างง่าย ๆ ตามสถานการณ์ และรู้จักอาชีพบางประเภทที่สุจริต", 3: "เข้าใจที่มาของรายรับรายจ่ายของตนเองและครอบครัววางแผนใช้จ่ายให้เหมาะสมกับรายได้ เข้าใจกระบวนการทำงานเพื่อให้เกิดรายได้ และเห็นคุณค่าของการประกอบอาชีพสุจริตในสังคม", 4: "อธิบายที่มาของรายรับรายจ่ายได้อย่างชัดเจน วางแผนการใช้จ่ายเงินอย่างมีเหตุผลและสอดคล้องกับสภาพเศรษฐกิจ เข้าใจบทบาทของการทำงานในบริบทครอบครัวและสังคม และแสดงความชื่นชมต่อการประกอบอาชีพสุจริตอย่างลึกซึ้ง" },
+                6: { 1: "ดูแลสุขภาพตนเองได้เพียงบางส่วน เลือกรับประทานอาหารตามใจชอบ ยังไม่คำนึงถึงความปลอดภัยและขอความช่วยเหลือได้ไม่ทันท่วงที", 2: "ปฏิบัติตนในการดูแลสุขภาพกายและจิตใจของตนเองได้พอเข้าใจ เลือกรับประทานอาหารที่มีประโยชน์ และปฏิบัติตามหลักความปลอดภัยในชีวิตประจำวันเมื่อมีผู้เตือน", 3: "ปฏิบัติตนในการดูแลสุขภาพกายและจิตใจได้อย่างถูกต้อง เลือกรับประทานอาหารที่มีประโยชน์ ออกกำลังกายสม่ำเสมอ และปฏิบัติตามหลักความปลอดภัยในชีวิตประจำวันได้ด้วยตนเอง", 4: "ปฏิบัติตนเพื่อส่งเสริมสุขภาพกายและจิตใจอย่างดีเยี่ยม สามารถวิเคราะห์และหลีกเลี่ยงปัจจัยเสี่ยงต่อสุขภาพ และแนะนำผู้อื่นในเรื่องความปลอดภัยได้อย่างเหมาะสม" },
+                7: { 1: "เข้าร่วมกิจกรรมศิลปะและวัฒนธรรมได้บางครั้ง ยังขาดความสนใจหรือความภาคภูมิใจในผลงาน", 2: "สร้างสรรค์งานศิลปะและเข้าร่วมกิจกรรมวัฒนธรรมได้ตามกำหนด มีความพยายามและพึงพอใจในผลงานของตน", 3: "สร้างสรรค์งานศิลปะและเข้าร่วมกิจกรรมวัฒนธรรมด้วยความภาคภูมิใจ แสดงออกถึงความประณีตและความคิดสร้างสรรค์", 4: "สร้างสรรค์งานศิลปะอย่างโดดเด่น ถ่ายทอดคุณค่าทางวัฒนธรรมด้วยความภาคภูมิใจอย่างยิ่ง และสื่อสารผลงานให้ผู้อื่นชื่นชมได้" }
+            },
+            P3: {
+                0: { 1: "เข้าใจเนื้อหาจากแหล่งข้อมูลบางส่วน เช่น คำหรือภาพ แต่ยังไม่สามารถสรุปเนื้อหาได้ชัดเจนและการสื่อสารยังไม่มีความชัดเจน", 2: "เข้าใจข้อมูลจากแหล่งต่าง ๆ ได้ในระดับพื้นฐาน สรุปประเด็นสำคัญได้บางส่วน และสามารถสื่อสารให้ผู้อื่นเข้าใจได้ในระดับหนึ่ง ด้วยวิธีง่าย ๆ เช่น พูดหรือเขียนประโยคสั้น", 3: "เข้าใจข้อมูลจากแหล่งต่าง ๆ ได้ครบถ้วน สรุปสาระสำคัญได้ถูกต้อง และสามารถสื่อสารอย่างชัดเจนด้วยวิธีหลากหลาย เช่นการพูด เขียน วาดภาพ หรือใช้สื่อช่วยสื่อความ", 4: "วิเคราะห์และสังเคราะห์ข้อมูลจากแหล่งต่าง ๆ ได้อย่างลึกซึ้ง สรุปเนื้อหาได้อย่างกระชับ ตรงประเด็น และสามารถเลือกใช้วิธีการสื่อสารที่เหมาะสมกับผู้ฟัง/ผู้อ่าน เช่น ใช้สื่อดิจิทัล นำเสนอผลงาน หรือเล่าเรื่องอย่างสร้างสรรค์และน่าสนใจ" },
+                1: { 1: "เขียนเรื่องได้สั้น ๆ โดยมีการจัดลำดับเนื้อหายังไม่ชัดเจน ใช้คำซ้ำหรือไม่เหมาะสม เนื้อเรื่องไม่สมบูรณ์ สื่อสารความคิดหรือความรู้สึกได้บางส่วนเท่านั้น", 2: "เขียนเรื่องได้มีลำดับเนื้อหาเริ่มต้น กลาง และจบอย่างเรียบง่าย ใช้คำพื้นฐานที่หลากหลายขึ้น สื่อความคิดและความรู้สึกได้พอเข้าใจ แต่ยังมีข้อผิดพลาดด้านการใช้ภาษา", 3: "เขียนเรื่องได้ต่อเนื่อง จัดลำดับเหตุการณ์ได้เป็นระบบ ใช้คำได้เหมาะสม ถ่ายทอดข้อมูล ความคิด และความรู้สึกได้ชัดเจน ถูกต้องตามบริบทของเรื่อง", 4: "เขียนเรื่องได้อย่างสร้างสรรค์ ลำดับเรื่องชัดเจน มีการใช้คำที่หลากหลายและเหมาะสม ถ่ายทอดข้อมูล ความคิด และความรู้สึกได้อย่างลุ่มลึก เหมาะสมกับสถานการณ์และกาลเทศะอย่างเป็นธรรมชาติ" },
+                2: { 1: "พยายามแก้ปัญหาที่ไม่คุ้นเคยได้บางส่วน แต่ยังขาดความเข้าใจในแนวคิดพื้นฐาน ใช้สัญลักษณ์ไม่ถูกต้องหรือไม่สัมพันธ์กับสถานการณ์ และยังไม่สามารถอธิบายวิธีคิดได้", 2: "แก้ปัญหาที่ไม่คุ้นเคยได้บางสถานการณ์โดยใช้แนวคิดพื้นฐานพอเข้าใจ มีความพยายามในการสื่อสารและอธิบายวิธีคิด แต่ยังไม่ชัดเจนและมีข้อผิดพลาดบางจุด", 3: "แก้ปัญหาใหม่หรือไม่คุ้นเคยได้อย่างมีประสิทธิภาพ โดยใช้แนวคิดพื้นฐานอย่างถูกต้อง มีความมั่นใจในการคิด และสามารถอธิบายขั้นตอนพร้อมใช้สัญลักษณ์ทางคณิตศาสตร์ได้อย่างสมเหตุสมผล", 4: "แก้ปัญหาที่ซับซ้อนและไม่คุ้นเคยได้อย่างสร้างสรรค์ มีการวิเคราะห์อย่างเป็นระบบ ใช้แนวคิดพื้นฐานประยุกต์ได้อย่างยืดหยุ่น สื่อสารและอธิบายแนวคิดด้วยภาษาและสัญลักษณ์ทางคณิตศาสตร์ได้อย่างชัดเจน มีเหตุผล และเหมาะสมกับบริบท" },
+                3: { 1: "อธิบายปรากฏการณ์ธรรมชาติหรือสิ่งแวดล้อมได้บ้างแต่ยังไม่เข้าใจชัดเจน ใช้เครื่องมือหรือเทคโนโลยีได้จำกัดและยังต้องการคำแนะนำ ไม่คำนึงถึงผลกระทบหรือขาดความรับผิดชอบ", 2: "อธิบายแนวคิดพื้นฐานของธรรมชาติและสิ่งแวดล้อมได้พอเข้าใจ ใช้เครื่องมือพื้นฐานและเทคโนโลยีแก้ปัญหาอย่างเรียบง่าย มีความรับผิดชอบระดับหนึ่ง และเริ่มมองเห็นผลกระทบจากการกระทำ", 3: "อธิบายแนวคิดและความสัมพันธ์ของปรากฏการณ์ได้ชัดเจน ใช้เครื่องมือและเทคโนโลยีได้เหมาะสมกับสถานการณ์ แก้ปัญหาหรือสร้างสรรค์สิ่งใหม่ได้ดี แสดงความรับผิดชอบและคำนึงถึงผลกระทบอย่างเหมาะสม", 4: "อธิบายปรากฏการณ์ทางธรรมชาติและผลกระทบที่ซับซ้อนได้ลึกซึ้ง ประยุกต์ใช้เครื่องมือและเทคโนโลยีเพื่อออกแบบหรือสร้างสรรค์สิ่งใหม่ได้อย่างสร้างสรรค์และมีจินตนาการสูง แสดงความรับผิดชอบต่อส่วนรวม และคิดเชิงระบบถึงผลกระทบระยะยาว" },
+                4: { 1: "แสดงพฤติกรรมที่เหมาะสมในชุมชนหรือสังคมได้เป็นบางครั้ง ยังต้องได้รับการเตือนขาดความต่อเนื่องในการทำหน้าที่ และมีส่วนร่วมน้อยหรือเฉพาะกิจกรรมที่บังคับ", 2: "เริ่มแสดงบทบาทในฐานะสมาชิกของชุมชนหรือสังคมได้พอเหมาะ มีความรับผิดชอบในงานส่วนรวมระดับหนึ่ง ทำงานร่วมกับผู้อื่นได้ และเข้าร่วมกิจกรรมวัฒนธรรมและประเพณีในบางโอกาส", 3: "ปฏิบัติตนได้เหมาะสมกับบทบาทในชุมชนและสังคม มีความรับผิดชอบในหน้าที่ส่วนรวม ทำงานเป็นทีมได้ดี และเข้าร่วมกิจกรรมวัฒนธรรมและประเพณีของสังคมด้วยความตั้งใจและสม่ำเสมอ", 4: "แสดงบทบาทเชิงรุกในชุมชนและสังคมอย่างชัดเจน มีความรับผิดชอบสูง เป็นผู้นำหรือสนับสนุนผู้อื่นในการทำงานร่วมกัน และมีส่วนร่วมในกิจกรรมทางวัฒนธรรมและประเพณีอย่างสร้างสรรค์ภาคภูมิใจ และต่อเนื่อง" },
+                5: { 1: "ระบุรายรับรายจ่ายของตนเองหรือครอบครัวได้อย่างจำกัด ยังไม่สามารถวางแผนใช้จ่ายหรือเสนอแนวทางหารายได้เสริมได้ เข้าใจกระบวนการทำงานในระดับพื้นฐาน และยังไม่แสดงความสนใจหรือเข้าใจเรื่องอาชีพ", 2: "ระบุรายรับรายจ่ายได้พอเข้าใจ เริ่มวางแผนการใช้จ่ายอย่างง่าย และสามารถยกตัวอย่างวิธีสร้างรายได้เสริมที่เหมาะสม เข้าใจกระบวนการทำงานเบื้องต้น และแสดงความสนใจในอาชีพที่สุจริต", 3: "ระบุและอธิบายรายรับรายจ่ายได้อย่างชัดเจน วางแผนใช้จ่ายเงินอย่างเหมาะสม รู้จักวิธีสร้างรายได้เสริมเล็ก ๆ ให้ครอบครัว เข้าใจกระบวนการทำงาน และแสดงความสนใจในอาชีพที่ตนชอบ พร้อมมีทัศนคติที่ดีต่อการทำงาน", 4: "วิเคราะห์รายรับรายจ่ายได้เป็นระบบ วางแผนใช้จ่ายอย่างรอบคอบ รู้จักแนวทางสร้างรายได้เสริมที่เหมาะสมกับบริบท เข้าใจกระบวนการทำงานอย่างลึกซึ้ง แสดงความภาคภูมิใจในอาชีพสุจริต และมีวิสัยทัศน์เกี่ยวกับอาชีพที่สนใจอย่างสร้างสรรค์" },
+                6: { 1: "ปฏิบัติตนด้านสุขภาพและความปลอดภัยได้จำกัด ขาดการวางแผนดูแลตนเอง และยังไม่มีทักษะการปฏิเสธหรือหลีกเลี่ยงภัยเสี่ยงรอบตัว", 2: "เริ่มวางแผนดูแลสุขภาพกายและจิตใจของตนเองได้บ้าง มีทักษะการปฏิเสธและป้องกันตนเองจากภัยเสี่ยงรอบตัวเมื่อได้รับคำแนะนำ", 3: "วางแผนและปฏิบัติตนเพื่อส่งเสริมสุขภาพกายและสุขภาพจิตได้อย่างเหมาะสม มีทักษะการปฏิเสธและการป้องกันตนเองจากภัยเสี่ยงรอบตัวได้อย่างมีสติ", 4: "วางแผนและปฏิบัติตนเพื่อส่งเสริมสุขภาพกายและจิตใจอย่างยึดมั่น มีทักษะการปฏิเสธและป้องกันตนเองจากภัยเสี่ยงทุกรูปแบบอย่างชาญฉลาด และส่งเสริมสุขภาพของผู้อื่น" },
+                7: { 1: "เข้าร่วมกิจกรรมศิลปะและวัฒนธรรมได้ตามหน้าที่ แต่ยังไม่สามารถชื่นชมหรือประยุกต์ใช้ภูมิปัญญาท้องถิ่นได้", 2: "เริ่มแสดงความชื่นชมและร่วมอนุรักษ์ศิลปวัฒนธรรมและภูมิปัญญาท้องถิ่นได้บ้างเมื่อเข้าร่วมกิจกรรม", 3: "ชื่นชม ประยุกต์ใช้ และร่วมอนุรักษ์ศิลปวัฒนธรรมและภูมิปัญญาท้องถิ่นอย่างสร้างสรรค์ด้วยความตั้งใจ", 4: "ชื่นชม ประยุกต์ใช้ และร่วมอนุรักษ์ศิลปวัฒนธรรมและภูมิปัญญาท้องถิ่นได้อย่างโดดเด่น มีความคิดสร้างสรรค์ชั้นสูง และถ่ายทอดสืบสานสู่ผู้อื่น" }
+            }
+        };
+
+        const EXPECTED_LEVELS = {
+            P1: [2, 2, 2, 2, 2, 2, 2, 2],
+            P2: [2, 2, 2, 2, 2, 2, 2, 2],
+            P3: [3, 3, 3, 2, 2, 2, 2, 2]
+        };
+
+        const LEVEL_NAMES = {
+            1: "เริ่มต้น",
+            2: "พัฒนา",
+            3: "ชำนาญ",
+            4: "เชี่ยวชาญ"
+        };
+
+        let appState = {
+            currentGrade: 'P1',
+            activeTab: 'students',
+            webAppUrl: DEFAULT_WEB_APP_URL,
+            settings: {
+                schoolName: "โรงเรียนวัดสาธิตศึกษา",
+                areaOffice: "สำนักงานเขตพื้นที่การศึกษาประถมศึกษา",
+                directorName: "นายสมศักดิ์ บริหาร",
+                directorPosition: "ผู้อำนวยการโรงเรียน",
+                teacherP1: "นางสาวสมศรี ใจดี",
+                teacherP2: "นางสาวสมนึก ใจร้าย",
+                teacherP3: "นายสุดหล่อ ใจดี"
+            },
+            students: {
+                P1: [],
+                P2: [],
+                P3: []
+            }
+        };
+
+        function saveLocalData() {
+            localStorage.setItem('local_app_students', JSON.stringify(appState.students));
+            localStorage.setItem('local_app_settings', JSON.stringify(appState.settings));
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'bg-emerald-600' : 'bg-rose-600';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-circle-exclamation';
+
+            toast.className = `flex items-center gap-2 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg font-medium text-sm toast-enter pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-enter-active');
+            });
+
+            setTimeout(() => {
+                toast.classList.remove('toast-enter-active');
+                toast.classList.add('toast-exit-active');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function toThaiNumerals(num) {
+            if (num === null || num === undefined) return '';
+            const thaiDigits = ['๐', '๑', '๒', '๓', '๔', '๕', '๖', '๗', '๘', '๙'];
+            return String(num).replace(/[0-9]/g, d => thaiDigits[d]);
+        }
+
+        function getProgressTrend(obt, exp) {
+            if (obt > exp) return { text: 'สูงกว่าระดับคาดหวัง', class: 'text-emerald-700 font-bold' };
+            if (obt === exp) return { text: 'ตามระดับคาดหวัง', class: 'text-blue-700 font-medium' };
+            return { text: 'ควรได้รับการพัฒนา', class: 'text-rose-700 font-bold' };
+        }
+
+        function generateBehaviorComment(grade, compIndex, scoreLvl, name) {
+            const gradeRubrics = BEHAVIOR_RUBRICS[grade] || BEHAVIOR_RUBRICS['P1'];
+            const compRubric = gradeRubrics[compIndex];
+            
+            if (compRubric && compRubric[scoreLvl]) {
+                return compRubric[scoreLvl];
+            }
+            return `ปฏิบัติงานได้ในระดับ${LEVEL_NAMES[scoreLvl] || 'มาตรฐาน'} ตามเกณฑ์ความสามารถชั้นปี`;
+        }
+
+function switchTab(tabName) {
+            appState.activeTab = tabName;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-brand-600', 'text-brand-600');
+                btn.classList.add('border-transparent', 'text-slate-500');
+            });
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('border-transparent', 'text-slate-500');
+                activeBtn.classList.add('border-brand-600', 'text-brand-600');
+            }
+
+            if (tabName === 'scores') {
+                populateScoreStudentDropdown();
+                loadStudentScoreForm();
+            } else if (tabName === 'reports') {
+                populateReportStudentDropdown();
+                renderReportCard();
+            } else if (tabName === 'grad') {
+                populateGradStudentDropdown(); // <--- เพิ่มการเรียกฟังก์ชันสร้างรายชื่อ ป.๓ ตรงนี้
+                renderGraduationCard();
+            } else if (tabName === 'settings') {
+                loadSettingsForm();
+            }
+        }
+
+        function updateSyncStatusUI(isConnected) {
+            const badge = document.getElementById('syncStatusBadge');
+            if (badge) {
+                if (isConnected) {
+                    badge.className = "cursor-pointer bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs px-2.5 py-1 rounded-md flex items-center gap-1.5 transition hover:bg-emerald-500/30";
+                    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span><span class="font-medium text-xs">เชื่อม Sheets แล้ว</span>`;
+                } else {
+                    badge.className = "cursor-pointer bg-amber-500/20 text-amber-300 border border-amber-400/30 text-xs px-2.5 py-1 rounded-md flex items-center gap-1.5 transition hover:bg-amber-500/30";
+                    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span><span class="font-medium text-xs">กำลังเชื่อมต่อ...</span>`;
+                }
+            }
+        }
+
+        function openSheetsConfigModal() {
+            document.getElementById('webAppUrlInput').value = appState.webAppUrl;
+            document.getElementById('sheetsConfigModal').classList.remove('hidden');
+        }
+
+        function closeSheetsConfigModal() {
+            document.getElementById('sheetsConfigModal').classList.add('hidden');
+        }
+
+        function saveSheetsConfig() {
+            const url = document.getElementById('webAppUrlInput').value.trim();
+            if (url) {
+                appState.webAppUrl = url;
+                localStorage.setItem('gas_webapp_url', url);
+            }
+            closeSheetsConfigModal();
+            syncDataFromSheets();
+        }
+
+        async function syncDataFromSheets() {
+            const syncIcon = document.getElementById('syncIcon');
+            if (syncIcon) syncIcon.classList.add('fa-spin');
+
+            try {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler((res) => {
+                            if (syncIcon) syncIcon.classList.remove('fa-spin');
+                            if (res && res.status === 'success') {
+                                if (res.students) appState.students = res.students;
+                                if (res.settings) appState.settings = Object.assign(appState.settings, res.settings);
+                                saveLocalData();
+                                renderStudentTable();
+                                loadSettingsForm();
+                                updateSyncStatusUI(true);
+                                showToast('ซิงค์ข้อมูลเรียบร้อยแล้ว');
+                            }
+                        })
+                        .getInitialData();
+                    return;
+                }
+
+                const response = await fetch(`${appState.webAppUrl}?action=getInitialData`);
+                const res = await response.json();
+                
+                if (res && res.status === 'success') {
+                    if (res.students) appState.students = res.students;
+                    if (res.settings) appState.settings = Object.assign(appState.settings, res.settings);
+                    saveLocalData();
+                    renderStudentTable();
+                    if (appState.activeTab === 'scores') loadStudentScoreForm();
+                    if (appState.activeTab === 'settings') loadSettingsForm();
+                    updateSyncStatusUI(true);
+                    showToast('เชื่อมต่อและดึงข้อมูลจาก Google Sheets สำเร็จ');
+                } else {
+                    showToast('ดึงข้อมูลไม่สำเร็จ: ' + (res.message || ''), 'error');
+                }
+            } catch (err) {
+                console.error('Sync error:', err);
+                showToast('ไม่สามารถเชื่อมต่อได้ กรุณาตรวจสอบ URL', 'error');
+            } finally {
+                if (syncIcon) syncIcon.classList.remove('fa-spin');
+            }
+        }
+
+        async function sendToGoogleSheets(action, payload) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.processAction(action, payload);
+                return;
+            }
+
+            if (!appState.webAppUrl) return;
+            try {
+                await fetch(appState.webAppUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: action, data: payload })
+                });
+            } catch (e) {
+                console.error('Save error:', e);
+            }
+        }
+
+        function changeGrade() {
+            appState.currentGrade = document.getElementById('gradeSelect').value;
+            renderStudentTable();
+            if (appState.activeTab === 'scores') {
+                populateScoreStudentDropdown();
+                loadStudentScoreForm();
+            } else if (appState.activeTab === 'reports') {
+                populateReportStudentDropdown();
+                renderReportCard();
+            }
+        }
+
+        function renderStudentTable() {
+            const list = appState.students[appState.currentGrade] || [];
+            const tbody = document.getElementById('studentTableBody');
+            const currentGradeLabel = document.getElementById('currentGradeLabel');
+            const studentCountBadge = document.getElementById('studentCountBadge');
+
+            if (currentGradeLabel) currentGradeLabel.textContent = `(${appState.currentGrade})`;
+            if (studentCountBadge) studentCountBadge.textContent = list.length;
+
+            if (!tbody) return;
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">ยังไม่มีข้อมูลนักเรียนในชั้นนี้ กรุณาเพิ่มข้อมูล</td></tr>`;
+                return;
+            }
+
+            // แสดงผลสถานะตามค่า isEvaluated ที่บันทึกไว้
+            tbody.innerHTML = list.map(st => `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="px-4 py-3 text-center font-semibold text-slate-700">${st.no}</td>
+                    <td class="px-4 py-3 font-mono text-slate-600">${st.code}</td>
+                    <td class="px-4 py-3 font-medium text-slate-900">${st.name}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold ${st.attendance >= 80 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                            ${st.attendance}%
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        ${st.isEvaluated 
+                        ? `<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">ประเมินแล้ว</span>` 
+                        : `<span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">รอประเมิน</span>`}
+                    </td>
+                    <td class="px-4 py-3 text-center space-x-1">
+                        <button onclick="editStudent('${st.id}')" class="p-1.5 text-slate-500 hover:text-brand-600 transition" title="แก้ไข">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteStudent('${st.id}')" class="p-1.5 text-slate-500 hover:text-rose-600 transition" title="ลบ">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openAddStudentModal() {
+            document.getElementById('modalStudentTitle').textContent = 'เพิ่มนักเรียนใหม่';
+            document.getElementById('modalStudentId').value = '';
+            document.getElementById('modalStudentNo').value = (appState.students[appState.currentGrade]?.length || 0) + 1;
+            document.getElementById('modalStudentCode').value = '';
+            document.getElementById('modalStudentName').value = '';
+            document.getElementById('modalStudentAttendance').value = 100;
+            document.getElementById('studentModal').classList.remove('hidden');
+        }
+
+        function editStudent(id) {
+            const list = appState.students[appState.currentGrade] || [];
+            const st = list.find(s => s.id === id);
+            if (!st) return;
+
+            document.getElementById('modalStudentTitle').textContent = 'แก้ไขข้อมูลนักเรียน';
+            document.getElementById('modalStudentId').value = st.id;
+            document.getElementById('modalStudentNo').value = st.no;
+            document.getElementById('modalStudentCode').value = st.code;
+            document.getElementById('modalStudentName').value = st.name;
+            document.getElementById('modalStudentAttendance').value = st.attendance;
+            document.getElementById('studentModal').classList.remove('hidden');
+        }
+
+        function closeStudentModal() {
+            document.getElementById('studentModal').classList.add('hidden');
+        }
+
+        function handleSaveStudent(e) {
+            e.preventDefault();
+            const id = document.getElementById('modalStudentId').value || 's_' + Date.now();
+            const no = Number(document.getElementById('modalStudentNo').value);
+            const code = document.getElementById('modalStudentCode').value.trim();
+            const name = document.getElementById('modalStudentName').value.trim();
+            const attendance = Number(document.getElementById('modalStudentAttendance').value);
+
+            let list = appState.students[appState.currentGrade] || [];
+            const index = list.findIndex(s => s.id === id);
+
+            const studentObj = {
+                id, no, code, name, attendance,
+                scores: index >= 0 ? list[index].scores : [2, 2, 2, 2, 2, 2, 2, 2],
+                actStatus: index >= 0 ? list[index].actStatus : 'PASS',
+                charStatus: index >= 0 ? list[index].charStatus : 'PASS',
+                isEvaluated: index >= 0 ? (list[index].isEvaluated || false) : false
+            };
+
+            if (index >= 0) {
+                list[index] = studentObj;
+            } else {
+                list.push(studentObj);
+            }
+
+            list.sort((a, b) => a.no - b.no);
+            appState.students[appState.currentGrade] = list;
+
+            saveLocalData();
+            renderStudentTable();
+            closeStudentModal();
+            sendToGoogleSheets('saveStudent', { grade: appState.currentGrade, student: studentObj });
+            showToast('บันทึกข้อมูลนักเรียนเรียบร้อย');
+        }
+
+        function deleteStudent(studentId) {
+            if (!confirm('คุณต้องการลบข้อมูลนักเรียนคนนี้ใช่หรือไม่?')) return;
+            let list = appState.students[appState.currentGrade] || [];
+            appState.students[appState.currentGrade] = list.filter(s => s.id !== studentId);
+            saveLocalData();
+            renderStudentTable();
+            sendToGoogleSheets('deleteStudent', { grade: appState.currentGrade, studentId });
+            showToast('ลบข้อมูลนักเรียนเรียบร้อย');
+        }
+
+        function openBulkImportModal() {
+            document.getElementById('bulkImportText').value = '';
+            document.getElementById('bulkImportModal').classList.remove('hidden');
+        }
+
+        function closeBulkImportModal() {
+            document.getElementById('bulkImportModal').classList.add('hidden');
+        }
+
+        function processBulkImport(event) {
+            event.preventDefault();
+            const text = document.getElementById('bulkImportText').value.trim();
+            
+            if (!text) { 
+                showToast('กรุณาวางข้อมูลในช่องว่างก่อนกดยืนยัน', 'error'); 
+                return; 
+            }
+
+            const lines = text.split('\n');
+            let list = appState.students[appState.currentGrade] || [];
+            let addedCount = 0;
+
+            lines.forEach((line) => {
+                const parts = line.split('\t');
+                const cols = parts.length > 1 ? parts : line.split(',');
+
+                if (cols.length >= 3) {
+                    const no = parseInt(cols[0].trim());
+                    const code = cols[1].trim();
+                    const name = cols[2].trim();
+                    const attendance = cols[3] ? parseInt(cols[3].trim()) : 100;
+
+                    if (!isNaN(no) && code && name) {
+                        const existingIndex = list.findIndex(s => s.code === code);
+                        
+                        if (existingIndex >= 0) {
+                            list[existingIndex].no = no;
+                            list[existingIndex].name = name;
+                            list[existingIndex].attendance = isNaN(attendance) ? 100 : attendance;
+                        } else {
+                            const id = 's_bulk_' + Date.now() + '_' + addedCount;
+                            list.push({
+                                id, no, code, name,
+                                attendance: isNaN(attendance) ? 100 : attendance,
+                                scores: [2, 2, 2, 2, 2, 2, 2, 2],
+                                actStatus: 'PASS',
+                                charStatus: 'PASS',
+                                isEvaluated: false
+                            });
+                        }
+                        addedCount++;
+                    }
+                }
+            });
+
+            if (addedCount > 0) {
+                list.sort((a, b) => a.no - b.no);
+                appState.students[appState.currentGrade] = list;
+                
+                saveLocalData();
+                renderStudentTable();
+                closeBulkImportModal();
+                
+                sendToGoogleSheets('saveBulkStudents', {
+                    grade: appState.currentGrade,
+                    students: list
+                });
+
+                showToast(`นำเข้าสำเร็จ ${addedCount} รายการ!`);
+            } else {
+                showToast('รูปแบบข้อมูลไม่ถูกต้อง กรุณาตรวจสอบการคัดลอกอีกครั้ง', 'error');
+            }
+        }
+
+        function populateScoreStudentDropdown() {
+            const select = document.getElementById('scoreStudentSelect');
+            const list = appState.students[appState.currentGrade] || [];
+            if (!select) return;
+            select.innerHTML = list.map(s => `<option value="${s.id}">เลขที่ ${s.no} - ${s.name}</option>`).join('');
+        }
+
+        function loadStudentScoreForm() {
+            const select = document.getElementById('scoreStudentSelect');
+            if (!select || !select.value) return;
+            const studentId = select.value;
+            const list = appState.students[appState.currentGrade] || [];
+            const student = list.find(s => s.id === studentId) || list[0];
+            if (!student) return;
+
+            const titles = COMPETENCY_TITLES[appState.currentGrade];
+            const expected = EXPECTED_LEVELS[appState.currentGrade];
+            const container = document.getElementById('competencyFormContainer');
+
+            let html = '';
+            titles.forEach((title, i) => {
+                const currentScore = student.scores?.[i] || expected[i] || 2;
+                html += `
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                    <p class="text-sm font-semibold text-slate-800">${title}</p>
+                    <div class="flex items-center gap-4 pt-1 flex-wrap">
+                        <span class="text-xs font-medium text-slate-500">ระดับความสามารถ:</span>
+                        ${[1, 2, 3, 4].map(lvl => `
+                            <label class="inline-flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+                                <input type="radio" name="comp_${i}" value="${lvl}" ${currentScore === lvl ? 'checked' : ''} class="w-4 h-4 text-brand-600 focus:ring-brand-500">
+                                <span>${lvl}. ${LEVEL_NAMES[lvl]}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html;
+
+            const actPass = document.querySelector('input[name="activityStatus"][value="PASS"]');
+            const actFail = document.querySelector('input[name="activityStatus"][value="FAIL"]');
+            if (student.actStatus === 'FAIL') { if (actFail) actFail.checked = true; }
+            else { if (actPass) actPass.checked = true; }
+
+            const charPass = document.querySelector('input[name="charStatus"][value="PASS"]');
+            const charFail = document.querySelector('input[name="charStatus"][value="FAIL"]');
+            if (student.charStatus === 'FAIL') { if (charFail) charFail.checked = true; }
+            else { if (charPass) charPass.checked = true; }
+        }
+
+        function saveCurrentScores() {
+            const select = document.getElementById('scoreStudentSelect');
+            if (!select || !select.value) return;
+            const studentId = select.value;
+            const list = appState.students[appState.currentGrade] || [];
+            const student = list.find(s => s.id === studentId);
+            if (!student) return;
+
+            const titles = COMPETENCY_TITLES[appState.currentGrade];
+            const scores = [];
+            titles.forEach((_, i) => {
+                const checked = document.querySelector(`input[name="comp_${i}"]:checked`);
+                scores.push(checked ? Number(checked.value) : 2);
+            });
+
+            const actStatus = document.querySelector('input[name="activityStatus"]:checked')?.value || 'PASS';
+            const charStatus = document.querySelector('input[name="charStatus"]:checked')?.value || 'PASS';
+
+            student.scores = scores;
+            student.actStatus = actStatus;
+            student.charStatus = charStatus;
+            
+            // ประเมินแล้ว: เปลี่ยนสถานะเป็น True ทันทีเมื่อมีการบันทึก
+            student.isEvaluated = true;
+
+            saveLocalData();
+
+            sendToGoogleSheets('saveScores', {
+                grade: appState.currentGrade,
+                studentId, scores, actStatus, charStatus,
+                isEvaluated: true
+            });
+            showToast('บันทึกผลการประเมินเรียบร้อยแล้ว');
+            renderStudentTable();
+        }
+
+        function autoFillDefaultScores() {
+            const expected = EXPECTED_LEVELS[appState.currentGrade];
+            expected.forEach((lvl, i) => {
+                const el = document.querySelector(`input[name="comp_${i}"][value="${lvl}"]`);
+                if (el) el.checked = true;
+            });
+            showToast('เติมค่าคาดหวังตั้งต้นเรียบร้อย');
+        }
+
+        function toggleEntryMode() {
+            const mode = document.getElementById('entryModeSelect').value;
+            if (mode === 'batch') {
+                document.getElementById('individualEntryView').classList.add('hidden');
+                document.getElementById('batchEntryView').classList.remove('hidden');
+                renderBatchTable();
+            } else {
+                document.getElementById('individualEntryView').classList.remove('hidden');
+                document.getElementById('batchEntryView').classList.add('hidden');
+            }
+        }
+
+        function renderBatchTable() {
+            const tbody = document.getElementById('batchTableBody');
+            const list = appState.students[appState.currentGrade] || [];
+            if (!tbody) return;
+
+            tbody.innerHTML = list.map((s) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="border p-2 text-center font-bold">${s.no}</td>
+                    <td class="border p-2 font-medium">${s.name}</td>
+                    ${[0,1,2,3,4,5,6,7].map(cIdx => `
+                        <td class="border p-1 text-center">
+                            <select onchange="updateBatchScore('${s.id}', ${cIdx}, this.value)" class="w-full text-xs p-1 border rounded bg-white">
+                                <option value="1" ${s.scores[cIdx]===1?'selected':''}>1</option>
+                                <option value="2" ${s.scores[cIdx]===2?'selected':''}>2</option>
+                                <option value="3" ${s.scores[cIdx]===3?'selected':''}>3</option>
+                                <option value="4" ${s.scores[cIdx]===4?'selected':''}>4</option>
+                            </select>
+                        </td>
+                    `).join('')}
+                    <td class="border p-1 text-center">
+                        <select onchange="updateBatchField('${s.id}', 'actStatus', this.value)" class="w-full text-xs p-1 border rounded bg-white">
+                            <option value="PASS" ${s.actStatus==='PASS'?'selected':''}>ผ่าน</option>
+                            <option value="FAIL" ${s.actStatus==='FAIL'?'selected':''}>ไม่ผ่าน</option>
+                        </select>
+                    </td>
+                    <td class="border p-1 text-center">
+                        <select onchange="updateBatchField('${s.id}', 'charStatus', this.value)" class="w-full text-xs p-1 border rounded bg-white">
+                            <option value="PASS" ${s.charStatus==='PASS'?'selected':''}>ผ่าน</option>
+                            <option value="FAIL" ${s.charStatus==='FAIL'?'selected':''}>ไม่ผ่าน</option>
+                        </select>
+                    </td>
+                    <td class="border p-2 text-center font-semibold">${s.attendance}%</td>
+                </tr>
+            `).join('');
+        }
+
+        function updateBatchScore(studentId, index, val) {
+            const list = appState.students[appState.currentGrade] || [];
+            const st = list.find(s => s.id === studentId);
+            if (st) {
+                st.scores[index] = Number(val);
+                st.isEvaluated = true; // เมื่อมีการแก้ไขคะแนนในโหมดห้อง เปลี่ยนสถานะทันที
+                saveLocalData();
+                sendToGoogleSheets('saveScores', {
+                    grade: appState.currentGrade,
+                    studentId, scores: st.scores,
+                    actStatus: st.actStatus, charStatus: st.charStatus,
+                    isEvaluated: st.isEvaluated
+                });
+                renderStudentTable();
+            }
+        }
+
+        function updateBatchField(studentId, field, val) {
+            const list = appState.students[appState.currentGrade] || [];
+            const st = list.find(s => s.id === studentId);
+            if (st) {
+                st[field] = val;
+                st.isEvaluated = true; // เมื่อมีการแก้ไขสถานะในโหมดห้อง เปลี่ยนสถานะทันที
+                saveLocalData();
+                sendToGoogleSheets('saveScores', {
+                    grade: appState.currentGrade,
+                    studentId, scores: st.scores,
+                    actStatus: st.actStatus, charStatus: st.charStatus,
+                    isEvaluated: st.isEvaluated
+                });
+                renderStudentTable();
+            }
+        }
+
+        function updateBatchField(studentId, field, val) {
+            const list = appState.students[appState.currentGrade] || [];
+            const st = list.find(s => s.id === studentId);
+            if (st) {
+                st[field] = val;
+                st.isEvaluated = true; // เมื่อมีการแก้ไขสถานะในโหมดห้อง เปลี่ยนสถานะทันที
+                sendToGoogleSheets('saveScores', {
+                    grade: appState.currentGrade,
+                    studentId, scores: st.scores,
+                    actStatus: st.actStatus, charStatus: st.charStatus,
+                    isEvaluated: st.isEvaluated
+                });
+                renderStudentTable();
+            }
+        }
+
+        function populateReportStudentDropdown() {
+            const select = document.getElementById('reportStudentSelect');
+            const list = appState.students[appState.currentGrade] || [];
+            if (!select) return;
+            select.innerHTML = list.map(s => `<option value="${s.id}">เลขที่ ${s.no} - ${s.name}</option>`).join('');
+        }
+
+        function loadSettingsForm() {
+            const cfg = appState.settings || {};
+            document.getElementById('cfgSchoolName').value = cfg.schoolName || '';
+            document.getElementById('cfgAreaOffice').value = cfg.areaOffice || '';
+            document.getElementById('cfgDirectorName').value = cfg.directorName || '';
+            document.getElementById('cfgDirectorPosition').value = cfg.directorPosition || '';
+            document.getElementById('cfgTeacherP1').value = cfg.teacherP1 || '';
+            document.getElementById('cfgTeacherP2').value = cfg.teacherP2 || '';
+            document.getElementById('cfgTeacherP3').value = cfg.teacherP3 || '';
+        }
+
+        function saveSchoolSettings() {
+            appState.settings = {
+                schoolName: document.getElementById('cfgSchoolName').value.trim(),
+                areaOffice: document.getElementById('cfgAreaOffice').value.trim(),
+                directorName: document.getElementById('cfgDirectorName').value.trim(),
+                directorPosition: document.getElementById('cfgDirectorPosition').value.trim(),
+                teacherP1: document.getElementById('cfgTeacherP1').value.trim(),
+                teacherP2: document.getElementById('cfgTeacherP2').value.trim(),
+                teacherP3: document.getElementById('cfgTeacherP3').value.trim()
+            };
+
+            saveLocalData();
+            sendToGoogleSheets('saveSettings', { settings: appState.settings });
+            showToast('บันทึกข้อมูลการตั้งค่าเรียบร้อยแล้ว');
+            
+            if (appState.activeTab === 'reports') renderReportCard();
+            if (appState.activeTab === 'grad') renderGraduationCard();
+        }
+
+        function renderReportCard() {
+            const select = document.getElementById('reportStudentSelect');
+            if (!select || !select.value) return;
+            const studentId = select.value;
+            const list = appState.students[appState.currentGrade] || [];
+            const student = list.find(s => s.id === studentId) || list[0];
+
+            if (!student) return;
+
+            const gradeTitles = { P1: 'ชั้นประถมศึกษาปีที่ ๑', P2: 'ชั้นประถมศึกษาปีที่ ๒', P3: 'ชั้นประถมศึกษาปีที่ ๓' };
+            const gradeLabels = { P1: 'ประถมศึกษาปีที่ ๑', P2: 'ประถมศึกษาปีที่ ๒', P3: 'ประถมศึกษาปีที่ ๓' };
+            document.getElementById('rptGradeTitle').textContent = gradeTitles[appState.currentGrade];
+
+            const cfg = appState.settings || {};
+            document.getElementById('rptSchoolName').textContent = cfg.schoolName || 'โรงเรียนวัดสาธิตศึกษา';
+            document.getElementById('rptAreaOffice').textContent = cfg.areaOffice || 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษา';
+            document.getElementById('rptDirectorName').textContent = cfg.directorName || 'นายสมศักดิ์ บริหาร';
+            document.getElementById('rptDirectorPosition').textContent = cfg.directorPosition || 'ผู้อำนวยการโรงเรียน';
+
+            const activeTeacher = cfg[`teacher${appState.currentGrade}`] || 'ครูประจำชั้น';
+            document.getElementById('rptTeacherName').textContent = activeTeacher;
+            document.getElementById('rptTeacherGradeLabel').textContent = gradeLabels[appState.currentGrade];
+
+            document.getElementById('rptStudentName').textContent = student.name;
+            document.getElementById('rptAttendance').textContent = toThaiNumerals(student.attendance) + '%';
+
+            document.getElementById('chkActPass').textContent = (student.actStatus === 'PASS') ? '☑' : '☐';
+            document.getElementById('chkActFail').textContent = (student.actStatus === 'FAIL') ? '☑' : '☐';
+            document.getElementById('chkCharPass').textContent = (student.charStatus === 'PASS') ? '☑' : '☐';
+            document.getElementById('chkCharFail').textContent = (student.charStatus === 'FAIL') ? '☑' : '☐';
+
+            const titles = COMPETENCY_TITLES[appState.currentGrade];
+            const expected = EXPECTED_LEVELS[appState.currentGrade];
+            const rowsContainer = document.getElementById('rptCompetencyRows');
+            const behaviorContainer = document.getElementById('rptBehaviorRows');
+
+            let rowsHtml = '';
+            let behaviorHtml = '';
+
+            titles.forEach((title, i) => {
+                const obtLvl = student.scores?.[i] || expected[i] || 2;
+                const expLvl = expected[i];
+                const trend = getProgressTrend(obtLvl, expLvl);
+
+                rowsHtml += `
+                <tr>
+                    <td class="px-2 py-1 align-top">${title}</td>
+                    <td class="text-center align-middle font-medium">${LEVEL_NAMES[expLvl]}</td>
+                    <td class="text-center align-middle font-bold">${LEVEL_NAMES[obtLvl]}</td>
+                    <td class="text-center align-middle ${trend.class}">${trend.text}</td>
+                </tr>`;
+
+                const comment = generateBehaviorComment(appState.currentGrade, i, obtLvl, student.name);
+                behaviorHtml += `
+                <tr>
+                    <td class="text-center font-bold align-middle">${toThaiNumerals(i + 1)}</td>
+                    <td class="text-center font-bold align-middle">${LEVEL_NAMES[obtLvl]}</td>
+                    <td class="px-2 py-1 leading-snug">${comment}</td>
+                </tr>`;
+            });
+
+            rowsContainer.innerHTML = rowsHtml;
+            behaviorContainer.innerHTML = behaviorHtml;
+        }
+
+ function populateGradStudentDropdown() {
+            const select = document.getElementById('gradStudentSelect');
+            const list = appState.students['P3'] || [];
+            if (!select) return;
+            if (list.length === 0) {
+                select.innerHTML = `<option value="">ไม่มีข้อมูลนักเรียนชั้น ป.๓</option>`;
+                return;
+            }
+            select.innerHTML = list.map(s => `<option value="${s.id}">เลขที่ ${s.no} - ${s.name}</option>`).join('');
+        }
+
+        function renderGraduationCard() {
+            const select = document.getElementById('gradStudentSelect');
+            const list = appState.students['P3'] || [];
+            
+            // ดึงข้อมูลนักเรียนจากค่าที่เลือกใน Dropdown (ถ้าไม่มีให้ fallback เป็นคนแรกหรือข้อมูลตัวอย่าง)
+            const studentId = select ? select.value : null;
+            const student = list.find(s => s.id === studentId) || list[0] || { name: 'เด็กชายสนใจ การเรียน', attendance: 100, scores: [4, 3, 4, 2, 3, 3, 3, 3], actStatus: 'PASS', charStatus: 'PASS' };
+
+            const cfg = appState.settings || {};
+            document.getElementById('gradSchoolName').textContent = cfg.schoolName || 'โรงเรียนวัดสาธิตศึกษา';
+            document.getElementById('gradAreaOffice').textContent = cfg.areaOffice || 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษา';
+            document.getElementById('gradDirectorName').textContent = cfg.directorName || 'นายสมศักดิ์ บริหาร';
+            document.getElementById('gradDirectorPosition').textContent = cfg.directorPosition || 'ผู้อำนวยการโรงเรียน';
+            document.getElementById('gradTeacherName').textContent = cfg.teacherP3 || 'นายสุดหล่อ ใจดี';
+
+            document.getElementById('gradStudentName').textContent = student.name;
+            document.getElementById('gradAttendance').textContent = toThaiNumerals(student.attendance) + '%';
+
+            const readLvl = student.scores?.[0] || 3;
+            const writeLvl = student.scores?.[1] || 3;
+            const mathLvl = student.scores?.[2] || 3;
+            const lifeLvl = student.scores?.[3] || 2;
+
+            document.getElementById('gradReadingLevel').textContent = LEVEL_NAMES[readLvl];
+            document.getElementById('gradWritingLevel').textContent = LEVEL_NAMES[writeLvl];
+            document.getElementById('gradMathLevel').textContent = LEVEL_NAMES[mathLvl];
+            document.getElementById('gradLifeLevel').textContent = LEVEL_NAMES[lifeLvl];
+
+            document.getElementById('gradActPass').textContent = (student.actStatus === 'PASS') ? '☑ ผ่าน' : '☐ ผ่าน';
+            document.getElementById('gradActFail').textContent = (student.actStatus === 'FAIL') ? '☑ ไม่ผ่าน' : '☐ ไม่ผ่าน';
+            document.getElementById('gradCharPass').textContent = (student.charStatus === 'PASS') ? '☑ ผ่าน' : '☐ ผ่าน';
+            document.getElementById('gradCharFail').textContent = (student.charStatus === 'FAIL') ? '☑ ไม่ผ่าน' : '☐ ไม่ผ่าน';
+
+            const behaviorRowsContainer = document.getElementById('gradBehaviorRows');
+            if (behaviorRowsContainer) {
+                let behaviorHtml = '';
+                const gradTitles = [
+                    "๑. การอ่าน",
+                    "๒. การเขียน",
+                    "๓. การคิดคำนวณ",
+                    "๔. การประยุกต์ใช้ในชีวิตประจำวัน"
+                ];
+                const gradScores = [readLvl, writeLvl, mathLvl, lifeLvl];
+                
+                gradTitles.forEach((title, i) => {
+                    const obtLvl = gradScores[i];
+                    const comment = generateBehaviorComment('P3', i, obtLvl, student.name);
+                    behaviorHtml += `
+                    <tr>
+                        <td class="px-2 py-1 align-top font-medium">${title}</td>
+                        <td class="text-center font-bold align-middle">${LEVEL_NAMES[obtLvl]}</td>
+                        <td class="px-2 py-1 leading-snug">${comment}</td>
+                    </tr>`;
+                });
+                behaviorRowsContainer.innerHTML = behaviorHtml;
+            }
+        }
+
+        function downloadPDF() {
+            const activeTab = appState.activeTab;
+            const element = activeTab === 'grad' ? document.getElementById('grad-printable-area') : document.getElementById('printable-area');
+            const studentSelect = activeTab === 'grad' ? null : document.getElementById('reportStudentSelect');
+            const studentName = studentSelect ? studentSelect.options[studentSelect.selectedIndex].text.replace(/[^ก-๙a-zA-Z0-9\s]/g, '').trim() : 'นักเรียน';
+
+            const opt = {
+                margin:       0,
+                filename:     `รายงานผล_${appState.currentGrade}_${studentName}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // Initialize App
+        window.onload = () => {
+            const savedUrl = localStorage.getItem('gas_webapp_url');
+            if(savedUrl) {
+                appState.webAppUrl = savedUrl;
+            }
+            
+            const savedStudents = localStorage.getItem('local_app_students');
+            if (savedStudents) {
+                try { appState.students = JSON.parse(savedStudents); } catch (e) {}
+            }
+            
+            const savedSettings = localStorage.getItem('local_app_settings');
+            if (savedSettings) {
+                try { appState.settings = JSON.parse(savedSettings); } catch (e) {}
+            }
+
+            switchTab('students');
+            renderStudentTable();
+        };
+
+    </script>
+</body>
+</html>
